@@ -344,8 +344,10 @@
 
     <script>
     // --- CONFIGURATION --- //
-    const GOOGLE_CLIENT_ID = "434910578368-6ura496r68hb9onic2osm71c9es9ap8p.apps.googleusercontent.com";
+    // IMPORTANT: You must replace this with a valid Client ID.
+    const GOOGLE_CLIENT_ID = "YOUR_CLIENT_ID.apps.googleusercontent.com";
     const CALENDAR_ID = 'primary'; 
+    // IMPORTANT: Make sure to ENABLE the "Google Calendar API" and "Google Tasks API" in your Google Cloud Console project.
 
     // --- GOOGLE AUTH & API HANDLER --- //
     const GoogleService = {
@@ -378,13 +380,33 @@
             this.updateUIAfterLogin();
             TaskManager.render();
         },
+        // This function ensures we have a valid access token before making an API call.
         _makeApiCall(callback) {
-            if (!this.isLoggedIn || !this.tokenClient) { UI.showNotification("Please sign in to use Google features.", "error"); return; }
+            if (!this.isLoggedIn || !this.tokenClient) { 
+                UI.showNotification("Please sign in to use Google features.", "error"); 
+                return; 
+            }
+            if (!this.isGapiLoaded) {
+                UI.showNotification("Google APIs are still loading. Please try again in a moment.", "error");
+                return;
+            }
+
+            // Set the callback that will be executed once a valid token is available.
             this.tokenClient.callback = (tokenResponse) => {
-                if (tokenResponse && tokenResponse.access_token) { gapi.client.setToken(tokenResponse); callback(); } 
-                else { console.error("Authorization failed.", tokenResponse); UI.showNotification("Google authorization failed. Please try signing in again.", "error"); }
+                if (tokenResponse && tokenResponse.access_token) {
+                    gapi.client.setToken(tokenResponse);
+                    // Now that we have a token, execute the intended API call.
+                    callback();
+                } else {
+                    // This can happen if the user denies the permission prompt.
+                    console.error("Authorization failed.", tokenResponse);
+                    UI.showNotification("Google authorization failed. You may need to grant permissions.", "error");
+                }
             };
-            if (gapi.client.getToken()) { callback(); } else { this.tokenClient.requestAccessToken({ prompt: '' }); }
+
+            // Always request a token. The library handles caching, so this is efficient.
+            // This is the most reliable way to ensure we have a valid, non-expired token.
+            this.tokenClient.requestAccessToken({ prompt: '' });
         },
         addToCalendar(task) {
             this._makeApiCall(async () => {
