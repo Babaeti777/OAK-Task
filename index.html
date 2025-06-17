@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Eisenhower Matrix - Smart Task Manager</title>
+    <title>Eisenhower Matrix - AI Task Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,46 +11,40 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://apis.google.com/js/api.js" async defer></script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f2f5;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
         .quadrant-1-border { border-color: #ef4444 !important; }
         .quadrant-2-border { border-color: #3b82f6 !important; }
         .quadrant-3-border { border-color: #f97316 !important; }
         .quadrant-4-border { border-color: #6b7280 !important; }
-
         .quadrant-1-text { color: #ef4444 !important; }
         .quadrant-2-text { color: #3b82f6 !important; }
         .quadrant-3-text { color: #f97316 !important; }
         .quadrant-4-text { color: #6b7280 !important; }
-        
         .quadrant-1-bg { background-color: #ef4444 !important; }
         .quadrant-2-bg { background-color: #3b82f6 !important; }
         .quadrant-3-bg { background-color: #f97316 !important; }
         .quadrant-4-bg { background-color: #6b7280 !important; }
-
         .task.overdue { background-color: #fef2f2; border-left-color: #ef4444; }
         .task.running { box-shadow: 0 0 0 2px #3b82f6; background-color: #dbeafe; }
         .drag-over { transform: scale(1.02); background-color: #eff6ff; }
         .modal { transition: opacity 0.25s ease; }
         .modal-content { transition: transform 0.25s ease; }
+        .task-title-input { width: 100%; padding: 2px; border-radius: 4px; border: 1px solid #cbd5e1; outline: none; font-weight: 600; }
+        .task-title-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4); }
+        .spinner { border-top-color: #3498db; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-200">
 
-    <div id="configWarning" class="hidden px-4 py-3 text-sm font-medium text-center text-red-800 bg-red-100 border-b-2 border-red-200">
-        <strong>Configuration Required:</strong> Please update the <code>GOOGLE_CLIENT_ID</code> in the script to enable Google features. 
-        Get a Client ID from the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" class="font-bold text-blue-700 underline">Google Cloud Console</a>.
-    </div>
+    <div id="configWarning" class="hidden px-4 py-3 text-sm font-medium text-center text-red-800 bg-red-100 border-b-2 border-red-200"></div>
 
     <div class="min-h-screen p-4 mx-auto max-w-7xl sm:p-6 lg:p-8">
         <header class="mb-8 text-center">
             <h1 class="text-4xl font-bold tracking-tight text-gray-800 sm:text-5xl">Eisenhower Matrix</h1>
-            <p class="mt-2 text-lg text-gray-600">Focus on what matters, powered by Google.</p>
+            <p class="mt-2 text-lg text-gray-600">AI-Powered Task Management.</p>
             <div id="authSection" class="flex items-center justify-center min-h-[40px] mt-6"></div>
         </header>
-
         <div class="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-3">
             <div class="p-6 bg-white border border-gray-200 rounded-2xl shadow-lg lg:col-span-2">
                 <h2 class="text-lg font-semibold text-gray-800">Add a New Task</h2>
@@ -117,7 +111,13 @@
             </div>
             <div class="mt-4">
                 <div class="mb-4">
-                    <h4 class="font-semibold text-gray-700">Sub-tasks</h4>
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-semibold text-gray-700">Sub-tasks</h4>
+                        <button id="generateSubtasksBtn" onclick="GeminiService.generateSubtasks()" class="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-purple-500 rounded-md hover:bg-purple-600">
+                            <span class="btn-text">✨ Smart Sub-tasks</span>
+                            <div class="hidden w-4 h-4 border-2 border-white rounded-full spinner"></div>
+                        </button>
+                    </div>
                     <div id="subtasksContainer" class="mt-2 space-y-2"></div>
                     <div class="flex gap-2 mt-2">
                         <input type="text" id="newSubtaskInput" placeholder="Add a new sub-task..." class="flex-grow px-3 py-1 bg-gray-100 border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
@@ -125,7 +125,13 @@
                     </div>
                 </div>
                 <div>
-                    <h4 class="font-semibold text-gray-700">Notes</h4>
+                     <div class="flex items-center justify-between">
+                        <h4 class="font-semibold text-gray-700">Notes</h4>
+                        <button id="generateNotesBtn" onclick="GeminiService.generateNotes()" class="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-purple-500 rounded-md hover:bg-purple-600">
+                             <span class="btn-text">✨ Generate Notes</span>
+                             <div class="hidden w-4 h-4 border-2 border-white rounded-full spinner"></div>
+                        </button>
+                    </div>
                     <textarea id="taskNotes" rows="4" class="w-full p-2 mt-2 bg-gray-100 border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Add any notes here..."></textarea>
                 </div>
             </div>
@@ -138,19 +144,105 @@
     <script>
     // --- CONFIGURATION --- //
     const GOOGLE_CLIENT_ID = "434910578368-6ura496r68hb9onic2osm71c9es9ap8p.apps.googleusercontent.com";
-    const CALENDAR_ID = 'primary';
+    let GEMINI_API_KEY = ""; // Will be set by user if needed
+    
+    // --- GEMINI AI SERVICE --- //
+    const GeminiService = {
+        setLoadingState(buttonId, isLoading) {
+            const button = document.getElementById(buttonId);
+            if (button) {
+                const text = button.querySelector('.btn-text');
+                const spinner = button.querySelector('.spinner');
+                if (isLoading) {
+                    text.classList.add('hidden');
+                    spinner.classList.remove('hidden');
+                    button.disabled = true;
+                } else {
+                    text.classList.remove('hidden');
+                    spinner.classList.add('hidden');
+                    button.disabled = false;
+                }
+            }
+        },
+        async call(prompt) {
+            if (!GEMINI_API_KEY) {
+                const key = prompt("Please enter your Gemini API Key. You can get one from Google AI Studio.");
+                if (key) {
+                    GEMINI_API_KEY = key;
+                    localStorage.setItem('geminiApiKey', key);
+                } else {
+                    UI.showNotification("Gemini API Key is required for this feature.", "error");
+                    return null;
+                }
+            }
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    throw new Error(`API call failed with status: ${response.status}`);
+                }
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0) {
+                    return result.candidates[0].content.parts[0].text;
+                }
+                return null;
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                UI.showNotification("Failed to call Gemini API. Check console for details.", "error");
+                return null;
+            }
+        },
+        async generateSubtasks() {
+            this.setLoadingState('generateSubtasksBtn', true);
+            const task = TaskManager.tasks.find(t => t.id === UI.currentDetailTaskId);
+            if (!task) { this.setLoadingState('generateSubtasksBtn', false); return; }
+
+            const promptText = `Based on the main task "${task.title}", generate a list of 3 to 5 actionable sub-tasks. The sub-tasks should be concise and clear. Return them as a simple comma-separated list. For example: "Sub-task one,Sub-task two,Sub-task three"`;
+            const result = await this.call(promptText);
+            if (result) {
+                result.split(',').forEach(subtaskText => {
+                    if (subtaskText.trim()) {
+                        TaskManager.addSubtask(subtaskText.trim(), true);
+                    }
+                });
+            }
+            this.setLoadingState('generateSubtasksBtn', false);
+        },
+        async generateNotes() {
+            this.setLoadingState('generateNotesBtn', true);
+            const task = TaskManager.tasks.find(t => t.id === UI.currentDetailTaskId);
+            if (!task) { this.setLoadingState('generateNotesBtn', false); return; }
+
+            const promptText = `Generate helpful notes for the task: "${task.title}". The notes should be a short paragraph, offering a brief plan or key considerations.`;
+            const result = await this.call(promptText);
+            if (result) {
+                const notesArea = document.getElementById('taskNotes');
+                notesArea.value = result;
+                TaskManager.updateNotes(result);
+            }
+            this.setLoadingState('generateNotesBtn', false);
+        }
+    };
 
     // --- GOOGLE AUTH & API HANDLER --- //
     const GoogleService = {
         tokenClient: null, isGapiLoaded: false, isLoggedIn: false, userProfile: null,
         init() {
             window.onload = () => {
+                const googleConfigWarning = '<strong>Configuration Required:</strong> Please update the <code>GOOGLE_CLIENT_ID</code> in the script to enable Google Sign-In.';
                 if (GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID.apps.googleusercontent.com') {
+                    document.getElementById('configWarning').innerHTML = googleConfigWarning;
                     document.getElementById('configWarning').classList.remove('hidden');
                     document.querySelector('#authSection').innerHTML = `<button class="inline-flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-gray-400 rounded-lg shadow-md cursor-not-allowed" disabled>Setup Required</button>`;
-                    document.querySelectorAll('#addTaskForm input, #addTaskForm select, #addTaskForm button').forEach(el => el.disabled = true);
                     return;
                 }
+
                 google.accounts.id.initialize({
                     client_id: GOOGLE_CLIENT_ID,
                     callback: this.handleCredentialResponse.bind(this),
@@ -198,19 +290,20 @@
             };
             this.tokenClient.requestAccessToken({ prompt: 'consent' });
         },
-        async syncWithGoogleTasks() { /* ... existing ... */ },
-        addToCalendar(task) { /* ... existing ... */ },
-        addToTasks(task) { /* ... existing ... */ },
-        updateTask(task) { /* ... existing ... */ },
+        async syncWithGoogleTasks() {},
+        addToCalendar(task) {},
+        addToTasks(task) {},
+        updateTask(task) {},
         signIn() { if (google.accounts.id) { google.accounts.id.prompt(); } },
-        signOut() { /* ... existing ... */ },
-        renderSignInButton() { /* ... existing ... */ },
-        updateUIAfterLogin() { /* ... existing ... */ },
-        decodeJwt(token) { /* ... existing ... */ }
+        signOut() {},
+        renderSignInButton() {
+            document.getElementById('authSection').innerHTML = `<button class="inline-flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700" onclick="GoogleService.signIn()"><svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.19,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.19,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.19,22C17.6,22 21.54,18.33 21.54,12.25C21.54,11.66 21.48,11.38 21.35,11.1Z"></path></svg> Sign in with Google</button>`;
+        },
+        updateUIAfterLogin() {},
+        decodeJwt(token) { try { return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); } catch (e) { console.error('Error decoding JWT', e); return null; } }
     };
-    GoogleService.init();
-
-    // --- UI MANAGER & MODALS --- //
+    
+    // --- UI MANAGER --- //
     const UI = {
         currentDetailTaskId: null,
         openDetailsModal(taskId) {
@@ -243,13 +336,26 @@
             modal.querySelector('.modal-content').classList.add('scale-95');
             setTimeout(() => modal.classList.add('pointer-events-none'), 300);
         },
-        showNotification(message, type = 'success') { /* ... existing ... */ }
+        showNotification(message, type = 'success') {
+             const warningDiv = document.getElementById('configWarning');
+             warningDiv.innerHTML = message;
+             warningDiv.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
+             warningDiv.classList.add(type === 'success' ? 'bg-green-100' : 'bg-red-100', type === 'success' ? 'text-green-800' : 'text-red-800');
+             setTimeout(() => {
+                warningDiv.classList.add('hidden');
+             }, 5000)
+        }
     };
-
+    
     // --- TASK MANAGER --- //
     const TaskManager = {
         tasks: JSON.parse(localStorage.getItem('tasks')) || [],
         idCounter: parseInt(localStorage.getItem('idCounter')) || 1,
+        editingTaskId: null,
+        init() {
+            GEMINI_API_KEY = localStorage.getItem('geminiApiKey') || '';
+            GoogleService.init();
+        },
         addTask(event) {
             event.preventDefault();
             const title = document.getElementById('taskTitle').value.trim();
@@ -265,22 +371,49 @@
             };
             this.tasks.push(task); this.saveAndRender(); event.target.reset();
         },
-        deleteTask(taskId) { /* ... existing ... */ },
-        toggleComplete(taskId) { /* ... existing ... */ },
-        addSubtask() {
+        editTask(taskId) {
+            this.editingTaskId = taskId;
+            this.render();
+            const input = document.querySelector(`.task-title-input[data-task-id='${taskId}']`);
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        },
+        saveTaskTitle(taskId, newTitle) {
+            const task = this.tasks.find(t => t.id === taskId);
+            if (task && newTitle.trim()) {
+                task.title = newTitle.trim();
+            }
+            this.editingTaskId = null;
+            this.saveAndRender();
+        },
+        deleteTask(taskId) {
+             event.stopPropagation();
+            if (confirm('Are you sure you want to delete this task?')) { this.tasks = this.tasks.filter(t => t.id !== taskId); this.saveAndRender(); }
+        },
+        toggleComplete(taskId) {
+            event.stopPropagation();
+            const task = this.tasks.find(t => t.id == taskId);
+            if(task) { task.completed = !task.completed; GoogleService.updateTask(task); this.saveAndRender(); }
+        },
+        addSubtask(text, fromAI = false) {
             const taskId = UI.currentDetailTaskId;
             const task = this.tasks.find(t => t.id === taskId);
-            const input = document.getElementById('newSubtaskInput');
-            const text = input.value.trim();
-            if (!task || !text) return;
+            let subtaskText = text;
+            if (!fromAI) {
+                const input = document.getElementById('newSubtaskInput');
+                subtaskText = input.value.trim();
+            }
+            if (!task || !subtaskText) return;
             if (!task.subtasks) task.subtasks = [];
-            
             const subtaskId = task.subtasks.length > 0 ? Math.max(...task.subtasks.map(s => s.id)) + 1 : 1;
-            task.subtasks.push({ id: subtaskId, text, completed: false });
-            
-            input.value = '';
+            task.subtasks.push({ id: subtaskId, text: subtaskText, completed: false });
+            if (!fromAI) {
+                document.getElementById('newSubtaskInput').value = '';
+            }
             this.saveAndRender();
-            UI.openDetailsModal(taskId); // Refresh modal view
+            UI.openDetailsModal(taskId);
         },
         toggleSubtask(subtaskId) {
             const taskId = UI.currentDetailTaskId;
@@ -289,7 +422,7 @@
             const subtask = task.subtasks.find(st => st.id === subtaskId);
             if(subtask) subtask.completed = !subtask.completed;
             this.saveAndRender();
-            UI.openDetailsModal(taskId); // Refresh modal view
+            UI.openDetailsModal(taskId);
         },
         deleteSubtask(subtaskId) {
             const taskId = UI.currentDetailTaskId;
@@ -297,20 +430,38 @@
             if (!task) return;
             task.subtasks = task.subtasks.filter(st => st.id !== subtaskId);
             this.saveAndRender();
-            UI.openDetailsModal(taskId); // Refresh modal view
+            UI.openDetailsModal(taskId);
         },
         updateNotes(notes) {
             const taskId = UI.currentDetailTaskId;
             const task = this.tasks.find(t => t.id === taskId);
             if (task) { task.notes = notes; this.saveAndRender(); }
         },
-        syncTasks(googleTasks) { /* ... existing ... */ },
-        moveTask(taskId, newQuadrant) { /* ... existing ... */ },
-        dragStart(event, taskId) { /* ... existing ... */ },
-        allowDrop(event) { /* ... existing ... */ },
-        drop(event) { /* ... existing ... */ },
-        saveAndRender() { /* ... existing ... */ },
-        checkOverdueTasks() { /* ... existing ... */ },
+        syncTasks(googleTasks) {
+            let updated = false;
+            googleTasks.forEach(gTask => {
+                const localTask = this.tasks.find(t => t.googleTaskId === gTask.id);
+                if (localTask) {
+                    const isGoogleCompleted = gTask.status === 'completed';
+                    if (localTask.completed !== isGoogleCompleted) { localTask.completed = isGoogleCompleted; updated = true; }
+                }
+            });
+            if (updated) { this.saveAndRender(); }
+        },
+        moveTask(taskId, newQuadrant) { const task = this.tasks.find(t => t.id == taskId); if (task) { task.quadrant = newQuadrant; this.saveAndRender(); } },
+        dragStart(event, taskId) { event.stopPropagation(); event.dataTransfer.setData('text/plain', taskId); },
+        allowDrop(event) { event.preventDefault(); event.currentTarget.classList.add('drag-over'); },
+        drop(event) {
+            event.preventDefault(); event.currentTarget.classList.remove('drag-over');
+            const taskId = event.dataTransfer.getData('text/plain');
+            const newQuadrant = parseInt(event.currentTarget.dataset.quadrant);
+            this.moveTask(taskId, newQuadrant);
+        },
+        saveAndRender() { this.checkOverdueTasks(); localStorage.setItem('tasks', JSON.stringify(this.tasks)); localStorage.setItem('idCounter', this.idCounter); this.render(); },
+        checkOverdueTasks() {
+            const now = new Date();
+            this.tasks.forEach(task => { if (task.dueDate && !task.completed) { if (new Date(task.dueDate) < now) { task.quadrant = 1; } } });
+        },
         render() {
             const hideCompleted = document.getElementById('hideCompleted').checked;
             for (let i = 1; i <= 4; i++) {
@@ -320,22 +471,25 @@
                 document.getElementById(`count-${i}`).textContent = quadrantTasks.length;
                 if (quadrantTasks.length === 0) { container.innerHTML = `<div class="p-4 text-center text-gray-500">No tasks here.</div>`; continue; }
                 container.innerHTML = quadrantTasks.map(task => {
-                    const isRunning = false; // Timer is removed from main view for now
+                    const isRunning = false; // Simplified for now
                     const isOverdue = task.dueDate && !task.completed && new Date(task.dueDate) < new Date();
-                    
+                     const titleDisplay = this.editingTaskId === task.id
+                        ? `<input type="text" class="task-title-input" data-task-id="${task.id}" value="${task.title}" 
+                                  onblur="TaskManager.saveTaskTitle(${task.id}, this.value)" 
+                                  onkeydown="if(event.key === 'Enter') this.blur(); if(event.key === 'Escape') TaskManager.editTask(null)">`
+                        : `<p class="font-semibold text-gray-800 truncate task-title-text" onclick="event.stopPropagation(); TaskManager.editTask(${task.id})">${task.title}</p>`;
+
                     return `
                     <div class="task flex items-center justify-between p-3 transition duration-200 ease-in-out bg-white border-l-4 rounded-lg shadow-sm cursor-pointer ${task.completed ? 'completed opacity-60' : ''} ${isRunning ? 'running' : ''} ${isOverdue ? 'overdue' : ''} quadrant-${task.quadrant}-border" 
                          draggable="true" ondragstart="TaskManager.dragStart(event, ${task.id})">
                         <div class="flex-1 min-w-0 task-title">
-                           <p class="font-semibold text-gray-800 truncate task-title-text">${task.title}</p>
+                           ${titleDisplay}
                            <div class="flex items-center gap-3 mt-1 text-xs text-gray-500 task-meta">
                                 ${task.dueDate ? `<span>📅 ${new Date(task.dueDate).toLocaleDateString()}</span>` : ''}
                            </div>
                         </div>
-                        <div class="flex items-center gap-2 ml-2 task-actions">
-                            <button title="Details" onclick="event.stopPropagation(); UI.openDetailsModal(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📝</button>
-                            <button title="Add to Google Calendar" onclick='event.stopPropagation(); GoogleService.addToCalendar(${JSON.stringify(task)})' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📅</button>
-                            <button title="Add to Google Tasks" onclick='event.stopPropagation(); GoogleService.addToTasks(${JSON.stringify(task)})' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-green-500">✔️</button>
+                        <div class="flex items-center gap-1 ml-2 task-actions">
+                             <button title="Details" onclick="event.stopPropagation(); UI.openDetailsModal(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📝</button>
                             <button title="Mark as ${task.completed ? 'Incomplete' : 'Complete'}" onclick="TaskManager.toggleComplete(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200">${task.completed ? '↩️' : '✅'}</button>
                             <button title="Delete Task" onclick="TaskManager.deleteTask(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-red-500">🗑️</button>
                         </div>
@@ -344,6 +498,7 @@
             }
         },
     };
+    TaskManager.init();
     TaskManager.render();
     </script>
 </body>
