@@ -58,16 +58,13 @@
     </div>
 
     <div class="min-h-screen p-4 mx-auto max-w-7xl sm:p-6 lg:p-8">
-        <!-- Header -->
         <header class="mb-8 text-center">
             <h1 class="text-4xl font-bold tracking-tight text-gray-800 sm:text-5xl">Eisenhower Matrix</h1>
             <p class="mt-2 text-lg text-gray-600">Focus on what matters, powered by Google.</p>
             <div id="authSection" class="flex items-center justify-center min-h-[40px] mt-6"></div>
         </header>
 
-        <!-- Controls & Quick Add -->
         <div class="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-3">
-            <!-- Quick Add Form -->
             <div class="p-6 bg-white border border-gray-200 rounded-2xl shadow-lg lg:col-span-2">
                 <h2 class="text-lg font-semibold text-gray-800">Add a New Task</h2>
                  <form id="addTaskForm" class="mt-4" onsubmit="TaskManager.addTask(event)">
@@ -98,7 +95,6 @@
                 </form>
             </div>
 
-            <!-- Controls -->
             <div class="p-6 bg-white border border-gray-200 rounded-2xl shadow-lg">
                  <h2 class="text-lg font-semibold text-gray-800">Options</h2>
                  <div class="mt-4 space-y-4">
@@ -113,9 +109,7 @@
             </div>
         </div>
 
-        <!-- Matrix -->
         <main class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:gap-8">
-            <!-- Quadrant 1 -->
             <div class="quadrant quadrant-1 bg-white border-t-4 border-gray-200 rounded-2xl shadow-lg" data-quadrant="1" ondrop="TaskManager.drop(event)" ondragover="TaskManager.allowDrop(event)">
                 <div class="flex items-center justify-between p-4 border-b border-gray-200">
                     <h3 class="text-lg font-bold quadrant-1-text">🔥 Urgent & Important (Do)</h3>
@@ -123,24 +117,21 @@
                 </div>
                 <div id="tasks-1" class="p-4 space-y-3"></div>
             </div>
-            <!-- Quadrant 2 -->
-             <div class="quadrant quadrant-2 bg-white border-t-4 border-gray-200 rounded-2xl shadow-lg" data-quadrant="2" ondrop="TaskManager.drop(event)" ondragover="TaskManager.allowDrop(event)">
+            <div class="quadrant quadrant-2 bg-white border-t-4 border-gray-200 rounded-2xl shadow-lg" data-quadrant="2" ondrop="TaskManager.drop(event)" ondragover="TaskManager.allowDrop(event)">
                 <div class="flex items-center justify-between p-4 border-b border-gray-200">
                     <h3 class="text-lg font-bold quadrant-2-text">📅 Important (Schedule)</h3>
                     <div id="count-2" class="px-3 py-1 text-sm font-bold text-white rounded-full quadrant-2-bg">0</div>
                 </div>
                 <div id="tasks-2" class="p-4 space-y-3"></div>
             </div>
-            <!-- Quadrant 3 -->
-             <div class="quadrant quadrant-3 bg-white border-t-4 border-gray-200 rounded-2xl shadow-lg" data-quadrant="3" ondrop="TaskManager.drop(event)" ondragover="TaskManager.allowDrop(event)">
+            <div class="quadrant quadrant-3 bg-white border-t-4 border-gray-200 rounded-2xl shadow-lg" data-quadrant="3" ondrop="TaskManager.drop(event)" ondragover="TaskManager.allowDrop(event)">
                 <div class="flex items-center justify-between p-4 border-b border-gray-200">
                     <h3 class="text-lg font-bold quadrant-3-text">⚡ Urgent (Delegate)</h3>
                     <div id="count-3" class="px-3 py-1 text-sm font-bold text-white rounded-full quadrant-3-bg">0</div>
                 </div>
                 <div id="tasks-3" class="p-4 space-y-3"></div>
             </div>
-            <!-- Quadrant 4 -->
-             <div class="quadrant quadrant-4 bg-white border-t-4 border-gray-200 rounded-2xl shadow-lg" data-quadrant="4" ondrop="TaskManager.drop(event)" ondragover="TaskManager.allowDrop(event)">
+            <div class="quadrant quadrant-4 bg-white border-t-4 border-gray-200 rounded-2xl shadow-lg" data-quadrant="4" ondrop="TaskManager.drop(event)" ondragover="TaskManager.allowDrop(event)">
                 <div class="flex items-center justify-between p-4 border-b border-gray-200">
                     <h3 class="text-lg font-bold quadrant-4-text">🗑️ Neither (Eliminate)</h3>
                     <div id="count-4" class="px-3 py-1 text-sm font-bold text-white rounded-full quadrant-4-bg">0</div>
@@ -150,7 +141,6 @@
         </main>
     </div>
     
-    <!-- Timer Modal -->
     <div id="timerModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300 bg-black bg-opacity-50 opacity-0 pointer-events-none modal">
         <div class="w-full max-w-md p-6 text-center bg-white modal-content rounded-2xl shadow-2xl scale-95 transform-gpu transition-transform duration-300">
             <div class="timer-header">
@@ -188,7 +178,7 @@
         tokenClient: null, isGapiLoaded: false, isLoggedIn: false, userProfile: null,
         init() {
             window.onload = () => {
-                if (GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID.apps.googleusercontent.com') {
+                if (GOOGLE_CLIENT_ID === '434910578368-6ura496r68hb9onic2osm71c9es9ap8p.apps.googleusercontent.com') {
                     document.getElementById('configWarning').classList.remove('hidden');
                     document.querySelector('#authSection').innerHTML = `<button class="inline-flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-gray-400 rounded-lg shadow-md cursor-not-allowed" disabled>Setup Required</button>`;
                     document.querySelectorAll('#addTaskForm input, #addTaskForm select, #addTaskForm button').forEach(el => el.disabled = true);
@@ -250,6 +240,20 @@
                 } catch (err) { console.error("Error syncing with Google Tasks:", err); }
             });
         },
+        addToCalendar(task) {
+            this._makeApiCall(async () => {
+                const event = {
+                    'summary': task.title,
+                    'description': `Quadrant: ${task.quadrant}`,
+                    'start': { 'dateTime': task.dueDate || new Date().toISOString(), 'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone },
+                    'end': { 'dateTime': task.dueDate || new Date(new Date().getTime() + task.timeBox * 60000).toISOString(), 'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone },
+                };
+                try {
+                    await gapi.client.calendar.events.insert({ 'calendarId': CALENDAR_ID, 'resource': event });
+                    UI.showNotification("Task added to Google Calendar!", "success");
+                } catch (err) { console.error("Error adding to Calendar:", err); UI.showNotification("Could not add to Google Calendar.", "error");}
+            });
+        },
         addToTasks(task) {
             this._makeApiCall(async () => {
                 try {
@@ -286,7 +290,7 @@
             document.getElementById('authSection').innerHTML = `<button class="inline-flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700" onclick="GoogleService.signIn()"><svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.19,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.19,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.19,22C17.6,22 21.54,18.33 21.54,12.25C21.54,11.66 21.48,11.38 21.35,11.1Z"></path></svg> Sign in with Google</button>`;
         },
         updateUIAfterLogin() {
-            document.getElementById('authSection').innerHTML = `<div class="flex items-center gap-3"><img src="${this.userProfile.picture}" alt="User" class="w-10 h-10 border-2 border-white rounded-full shadow-md"><span class="font-semibold text-white">${this.userProfile.name}</span><button class="px-3 py-1 text-sm font-medium text-gray-700 bg-white rounded-md hover:bg-gray-200" onclick="GoogleService.signOut()">Sign Out</button></div>`;
+            document.getElementById('authSection').innerHTML = `<div class="flex items-center gap-3"><img src="${this.userProfile.picture}" alt="User" class="w-10 h-10 border-2 border-white rounded-full shadow-md"><span class="font-semibold text-gray-800">${this.userProfile.name}</span><button class="px-3 py-1 text-sm font-medium text-gray-700 bg-white rounded-md hover:bg-gray-200" onclick="GoogleService.signOut()">Sign Out</button></div>`;
         },
         decodeJwt(token) {
             try { return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); } catch (e) { console.error('Error decoding JWT', e); return null; }
@@ -308,9 +312,15 @@
             if (this.isRunning || !this.currentTask) return;
             this.isRunning = true;
             document.getElementById('startBtn').classList.add('hidden'); document.getElementById('pauseBtn').classList.remove('hidden');
-            document.getElementById('timerStatus').textContent = 'Focusing...';
-            this.interval = setInterval(() => { this.remaining--; this.currentTask.remainingTime = this.remaining; this.updateDisplay(); if (this.remaining <= 0) { this.complete(); } }, 1000);
-            TaskManager.saveAndRender();
+            this.interval = setInterval(this.tick.bind(this), 1000);
+            this.tick();
+            TaskManager.render();
+        },
+        tick() {
+            this.remaining--;
+            this.currentTask.remainingTime = this.remaining;
+            this.updateDisplay();
+            if (this.remaining <= 0) { this.complete(); }
         },
         pause() {
             if (!this.isRunning) return;
@@ -343,12 +353,23 @@
             TaskManager.saveAndRender();
         },
         updateDisplay() {
-            const minutes = Math.floor(this.remaining / 60); const seconds = this.remaining % 60;
-            document.getElementById('timerDisplay').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            const formatTime = (seconds) => {
+                if (seconds < 0) seconds = 0;
+                const m = Math.floor(seconds / 60); const s = seconds % 60;
+                return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            };
+            document.getElementById('timerDisplay').textContent = formatTime(this.remaining);
+            document.getElementById('timerStatus').textContent = this.isRunning ? 'Focusing...' : 'Paused';
             const progressCircle = document.getElementById('timer-progress');
-            const circumference = progressCircle.r.baseVal.value * 2 * Math.PI;
-            const offset = circumference - (this.remaining / this.duration) * circumference;
-            progressCircle.style.strokeDashoffset = offset;
+            if (progressCircle) {
+                const circumference = progressCircle.r.baseVal.value * 2 * Math.PI;
+                const offset = this.duration > 0 ? circumference - (this.remaining / this.duration) * circumference : 0;
+                progressCircle.style.strokeDashoffset = offset;
+            }
+            if (this.currentTask) {
+                const taskTimerDisplay = document.querySelector(`.task-timer[data-task-id='${this.currentTask.id}']`);
+                if (taskTimerDisplay) { taskTimerDisplay.textContent = formatTime(this.remaining); }
+            }
         }
     };
 
@@ -415,21 +436,33 @@
                 container.innerHTML = quadrantTasks.map(task => {
                     const isRunning = Timer.currentTask && Timer.currentTask.id === task.id && Timer.isRunning;
                     const isOverdue = task.dueDate && !task.completed && new Date(task.dueDate) < new Date();
+                    
+                    let timeDisplay;
+                    if (isRunning) {
+                         timeDisplay = `${Math.floor(Timer.remaining / 60).toString().padStart(2, '0')}:${(Timer.remaining % 60).toString().padStart(2, '0')}`;
+                    } else if (task.remainingTime) {
+                         timeDisplay = `${Math.floor(task.remainingTime / 60).toString().padStart(2, '0')}:${(task.remainingTime % 60).toString().padStart(2, '0')}`;
+                    } else {
+                         timeDisplay = `${task.timeBox}:00`;
+                    }
+
                     return `
-                    <div class="flex items-center justify-between p-3 transition duration-200 ease-in-out bg-white border-l-4 rounded-lg shadow-sm cursor-pointer task ${task.completed ? 'completed opacity-60' : ''} ${isRunning ? 'running' : ''} ${isOverdue ? 'overdue' : ''} quadrant-${task.quadrant}-border" 
+                    <div class="task flex items-start justify-between p-3 transition duration-200 ease-in-out bg-white border-l-4 rounded-lg shadow-sm cursor-pointer ${task.completed ? 'completed opacity-60' : ''} ${isRunning ? 'running' : ''} ${isOverdue ? 'overdue' : ''} quadrant-${task.quadrant}-border" 
                          draggable="true" ondragstart="TaskManager.dragStart(event, ${task.id})" onclick="Timer.startFromTask(${task.id})">
-                        <div class="flex-1 task-title">
-                           <p class="font-semibold text-gray-800 task-title-text">${task.title}</p>
+                        <div class="flex-1 min-w-0 task-title">
+                           <p class="font-semibold text-gray-800 truncate task-title-text">${task.title}</p>
                            <div class="flex items-center gap-3 mt-1 text-xs text-gray-500 task-meta">
                                 ${task.dueDate ? `<span>📅 ${new Date(task.dueDate).toLocaleDateString()}</span>` : ''}
-                                ${task.remainingTime ? `<span class="px-2 py-0.5 text-white bg-orange-500 rounded-full">⏰ ${Math.floor(task.remainingTime / 60)}m left</span>` : `<span>⏱️ ${task.timeBox}m</span>`}
                            </div>
                         </div>
-                        <div class="flex items-center task-actions">
-                            <button title="Add to Google Calendar" onclick='event.stopPropagation(); GoogleService.addToCalendar(${JSON.stringify(task)})' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📅</button>
-                            <button title="Add to Google Tasks" onclick='event.stopPropagation(); GoogleService.addToTasks(${JSON.stringify(task)})' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-green-500">✔️</button>
-                            <button title="Mark as ${task.completed ? 'Incomplete' : 'Complete'}" onclick="TaskManager.toggleComplete(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200">${task.completed ? '↩️' : '✅'}</button>
-                            <button title="Delete Task" onclick="TaskManager.deleteTask(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-red-500">🗑️</button>
+                        <div class="flex items-center gap-2 ml-2 task-right-section">
+                            <div class="task-timer text-sm font-semibold text-gray-700" data-task-id="${task.id}">${timeDisplay}</div>
+                            <div class="flex items-center task-actions">
+                                <button title="Add to Google Calendar" onclick='event.stopPropagation(); GoogleService.addToCalendar(${JSON.stringify(task)})' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📅</button>
+                                <button title="Add to Google Tasks" onclick='event.stopPropagation(); GoogleService.addToTasks(${JSON.stringify(task)})' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-green-500">✔️</button>
+                                <button title="Mark as ${task.completed ? 'Incomplete' : 'Complete'}" onclick="TaskManager.toggleComplete(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200">${task.completed ? '↩️' : '✅'}</button>
+                                <button title="Delete Task" onclick="TaskManager.deleteTask(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-red-500">🗑️</button>
+                            </div>
                         </div>
                     </div>
                 `}).join('');
