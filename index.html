@@ -401,7 +401,7 @@
             } else {
                  // If a different timer is running, stop it first
                 if (this.isRunning) {
-                    this.stop();
+                    this.stop(true); // stop without rendering
                 }
                 // Start a new timer
                 this.currentTask = task;
@@ -433,14 +433,14 @@
             document.getElementById('timer-fullscreen-start').classList.remove('hidden');
             TaskManager.saveAndRender();
         },
-        stop() {
+        stop(isSwitching = false) {
             if(this.currentTask) {
                 delete this.currentTask.remainingTime;
                 this.isRunning = false;
                 clearInterval(this.interval);
                 this.closeFullscreen();
                 this.currentTask = null;
-                TaskManager.saveAndRender();
+                if (!isSwitching) TaskManager.saveAndRender();
             }
         },
         complete() { UI.showNotification(`Timer for "${this.currentTask.title}" complete!`, 'success'); this.stop(); },
@@ -648,7 +648,7 @@
                 document.getElementById(`count-${i}`).textContent = quadrantTasks.length;
                 if (quadrantTasks.length === 0) { container.innerHTML = `<div class="p-4 text-center text-gray-500">No tasks here.</div>`; continue; }
                 container.innerHTML = quadrantTasks.map(task => {
-                    const isRunning = Timer.currentTask && Timer.currentTask.id === task.id && Timer.isRunning;
+                    const isRunning = Timer.currentTask && Timer.currentTask.id === task.id;
                     const isOverdue = task.dueDate && !task.completed && new Date(task.dueDate) < new Date();
                     
                     const titleDisplay = this.editingTaskId === task.id
