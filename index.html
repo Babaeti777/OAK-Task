@@ -252,19 +252,21 @@
                 }
             }
         },
-        async call(prompt) {
+        async call(promptText) {
             if (!GEMINI_API_KEY) {
-                const key = prompt("Please enter your Gemini API Key. You can get one from Google AI Studio.");
+                const key = window.prompt("Please enter your Gemini API Key. You can get one from Google AI Studio.");
                 if (key) {
                     GEMINI_API_KEY = key;
-                    localStorage.setItem('geminiApiKey', key);
+                    if (typeof sessionStorage !== 'undefined') {
+                        sessionStorage.setItem('geminiApiKey', key);
+                    }
                 } else {
                     UI.showNotification("Gemini API Key is required for this feature.", "error");
                     return null;
                 }
             }
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            const payload = { contents: [{ role: "user", parts: [{ text: promptText }] }] };
 
             try {
                 const response = await fetch(apiUrl, {
@@ -649,13 +651,39 @@
             if (notesArea) { notesArea.value = task.notes || ''; }
             
             const subtasksContainer = document.getElementById('subtasksContainer');
-            subtasksContainer.innerHTML = (task.subtasks || []).map(st => `
-                <div class="flex items-center gap-2 p-2 bg-gray-100 rounded-md">
-                    <input type="checkbox" ${st.completed ? 'checked' : ''} onchange="TaskManager.toggleSubtask(${st.id})" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-                    <span class="flex-grow ${st.completed ? 'line-through text-gray-500' : 'text-gray-800'}">${st.text}</span>
-                    <button onclick="TaskManager.deleteSubtask(${st.id})" class="text-xs text-red-500 hover:text-red-700">Delete</button>
-                </div>
-            `).join('') || '<p class="text-sm text-center text-gray-500">No sub-tasks yet.</p>';
+            subtasksContainer.textContent = '';
+            const subtasks = task.subtasks || [];
+            if (subtasks.length === 0) {
+                const emptyMessage = document.createElement('p');
+                emptyMessage.className = 'text-sm text-center text-gray-500';
+                emptyMessage.textContent = 'No sub-tasks yet.';
+                subtasksContainer.appendChild(emptyMessage);
+            } else {
+                const fragment = document.createDocumentFragment();
+                subtasks.forEach((st) => {
+                    const subtaskRow = document.createElement('div');
+                    subtaskRow.className = 'flex items-center gap-2 p-2 bg-gray-100 rounded-md';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = Boolean(st.completed);
+                    checkbox.className = 'w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500';
+                    checkbox.addEventListener('change', () => TaskManager.toggleSubtask(st.id));
+
+                    const textSpan = document.createElement('span');
+                    textSpan.className = `flex-grow ${st.completed ? 'line-through text-gray-500' : 'text-gray-800'}`;
+                    textSpan.textContent = st.text;
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'text-xs text-red-500 hover:text-red-700';
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.addEventListener('click', () => TaskManager.deleteSubtask(st.id));
+
+                    subtaskRow.append(checkbox, textSpan, deleteButton);
+                    fragment.appendChild(subtaskRow);
+                });
+                subtasksContainer.appendChild(fragment);
+            }
             
             const modal = document.getElementById('detailsModal');
             modal.classList.remove('opacity-0', 'pointer-events-none');
@@ -674,7 +702,7 @@
         },
         showNotification(message, type = 'success') {
              const warningDiv = document.getElementById('configWarning');
-             warningDiv.innerHTML = message;
+             warningDiv.textContent = message;
              warningDiv.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
              warningDiv.classList.add(type === 'success' ? 'bg-green-100' : 'bg-red-100', type === 'success' ? 'text-green-800' : 'text-red-800');
              setTimeout(() => {
@@ -689,7 +717,12 @@
         idCounter: parseInt(localStorage.getItem('idCounter')) || 1,
         editingTaskId: null,
         init() {
-            GEMINI_API_KEY = localStorage.getItem('geminiApiKey') || '';
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('geminiApiKey')) {
+                localStorage.removeItem('geminiApiKey');
+            }
+            if (typeof sessionStorage !== 'undefined') {
+                GEMINI_API_KEY = sessionStorage.getItem('geminiApiKey') || '';
+            }
             this.render();
             OneDriveService.init();
         },
@@ -861,35 +894,106 @@
                 let quadrantTasks = this.tasks.filter(t => t.quadrant == i);
                 if (hideCompleted) { quadrantTasks = quadrantTasks.filter(t => !t.completed); }
                 document.getElementById(`count-${i}`).textContent = quadrantTasks.length;
-                if (quadrantTasks.length === 0) { container.innerHTML = `<div class="p-4 text-center text-gray-500">No tasks here.</div>`; continue; }
-                container.innerHTML = quadrantTasks.map(task => {
+                if (quadrantTasks.length === 0) {
+                    container.textContent = '';
+                    const empty = document.createElement('div');
+                    empty.className = 'p-4 text-center text-gray-500';
+                    empty.textContent = 'No tasks here.';
+                    container.appendChild(empty);
+                    continue;
+                }
+
+                container.textContent = '';
+                const fragment = document.createDocumentFragment();
+
+                quadrantTasks.forEach((task) => {
                     const isRunning = Timer.currentTask && Timer.currentTask.id === task.id;
                     const isOverdue = task.dueDate && !task.completed && new Date(task.dueDate) < new Date();
-                    
-                    const titleDisplay = this.editingTaskId === task.id
-                        ? `<input type="text" class="task-title-input" data-task-id="${task.id}" value="${task.title}"
-                                  onblur="TaskManager.saveTaskTitle(${task.id}, this.value)"
-                                  onkeydown="if(event.key === 'Enter') this.blur(); if(event.key === 'Escape') TaskManager.editTask(null, event)">`
-                        : `<p class="font-semibold text-gray-800 truncate task-title-text" onclick="TaskManager.editTask(${task.id}, event)">${task.title}</p>`;
-                    
-                    return `
-                    <div class="task flex items-center justify-between p-3 transition duration-200 ease-in-out bg-white border-l-4 rounded-lg shadow-sm ${task.completed ? 'completed opacity-60' : ''} ${isRunning ? 'running' : ''} ${isOverdue ? 'overdue' : ''} quadrant-${task.quadrant}-border" 
-                         draggable="true" ondragstart="TaskManager.dragStart(event, ${task.id})" ondragend="TaskManager.dragEnd(event)">
-                        <div class="flex-1 min-w-0 task-title">
-                           ${titleDisplay}
-                           <div class="flex items-center gap-3 mt-1 text-xs text-gray-500 task-meta">
-                                ${task.dueDate ? `<span>📅 ${new Date(task.dueDate).toLocaleDateString()}</span>` : ''}
-                                <span>⏱️ ${task.timeBox}m</span>
-                           </div>
-                        </div>
-                        <div class="flex items-center gap-1 ml-2 task-actions">
-                             <button title="Start Timer" onclick="Timer.startFromTask(${task.id}, event)" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-yellow-500">⏱️</button>
-                             <button title="Edit Details" onclick="UI.openDetailsModal(${task.id}, event)" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📝</button>
-                            <button title="Mark as ${task.completed ? 'Incomplete' : 'Complete'}" onclick="TaskManager.toggleComplete(${task.id}, event)" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200">${task.completed ? '↩️' : '✅'}</button>
-                            <button title="Delete Task" onclick="TaskManager.deleteTask(${task.id}, event)" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-red-500">🗑️</button>
-                        </div>
-                    </div>
-                `}).join('');
+
+                    const taskWrapper = document.createElement('div');
+                    taskWrapper.className = `task flex items-center justify-between p-3 transition duration-200 ease-in-out bg-white border-l-4 rounded-lg shadow-sm ${task.completed ? 'completed opacity-60' : ''} ${isRunning ? 'running' : ''} ${isOverdue ? 'overdue' : ''} quadrant-${task.quadrant}-border`;
+                    taskWrapper.setAttribute('draggable', 'true');
+                    taskWrapper.addEventListener('dragstart', (event) => TaskManager.dragStart(event, task.id));
+                    taskWrapper.addEventListener('dragend', (event) => TaskManager.dragEnd(event));
+
+                    const titleContainer = document.createElement('div');
+                    titleContainer.className = 'flex-1 min-w-0 task-title';
+
+                    if (this.editingTaskId === task.id) {
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'task-title-input';
+                        input.dataset.taskId = String(task.id);
+                        input.value = task.title;
+                        input.addEventListener('blur', () => TaskManager.saveTaskTitle(task.id, input.value));
+                        input.addEventListener('keydown', (event) => {
+                            if (event.key === 'Enter') {
+                                event.preventDefault();
+                                input.blur();
+                            }
+                            if (event.key === 'Escape') {
+                                TaskManager.editTask(null, event);
+                            }
+                        });
+                        titleContainer.appendChild(input);
+                    } else {
+                        const titleText = document.createElement('p');
+                        titleText.className = 'font-semibold text-gray-800 truncate task-title-text';
+                        titleText.textContent = task.title;
+                        titleText.addEventListener('click', (event) => TaskManager.editTask(task.id, event));
+                        titleContainer.appendChild(titleText);
+                    }
+
+                    const meta = document.createElement('div');
+                    meta.className = 'flex items-center gap-3 mt-1 text-xs text-gray-500 task-meta';
+                    if (task.dueDate) {
+                        const dueSpan = document.createElement('span');
+                        dueSpan.textContent = `📅 ${new Date(task.dueDate).toLocaleDateString()}`;
+                        meta.appendChild(dueSpan);
+                    }
+                    const timeSpan = document.createElement('span');
+                    timeSpan.textContent = `⏱️ ${task.timeBox}m`;
+                    meta.appendChild(timeSpan);
+                    titleContainer.appendChild(meta);
+
+                    const actions = document.createElement('div');
+                    actions.className = 'flex items-center gap-1 ml-2 task-actions';
+
+                    const startButton = document.createElement('button');
+                    startButton.type = 'button';
+                    startButton.title = 'Start Timer';
+                    startButton.className = 'p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-yellow-500';
+                    startButton.textContent = '⏱️';
+                    startButton.addEventListener('click', (event) => Timer.startFromTask(task.id, event));
+
+                    const detailsButton = document.createElement('button');
+                    detailsButton.type = 'button';
+                    detailsButton.title = 'Edit Details';
+                    detailsButton.className = 'p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500';
+                    detailsButton.textContent = '📝';
+                    detailsButton.addEventListener('click', (event) => UI.openDetailsModal(task.id, event));
+
+                    const toggleButton = document.createElement('button');
+                    toggleButton.type = 'button';
+                    toggleButton.title = `Mark as ${task.completed ? 'Incomplete' : 'Complete'}`;
+                    toggleButton.className = 'p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200';
+                    toggleButton.textContent = task.completed ? '↩️' : '✅';
+                    toggleButton.addEventListener('click', (event) => TaskManager.toggleComplete(task.id, event));
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.type = 'button';
+                    deleteButton.title = 'Delete Task';
+                    deleteButton.className = 'p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-red-500';
+                    deleteButton.textContent = '🗑️';
+                    deleteButton.addEventListener('click', (event) => TaskManager.deleteTask(task.id, event));
+
+                    actions.append(startButton, detailsButton, toggleButton, deleteButton);
+
+                    taskWrapper.append(titleContainer, actions);
+                    fragment.appendChild(taskWrapper);
+                });
+
+                container.appendChild(fragment);
             }
         },
     };
