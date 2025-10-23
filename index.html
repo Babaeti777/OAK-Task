@@ -8,8 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://apis.google.com/js/api.js" async defer></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
         .quadrant-1-border { border-color: #ef4444 !important; }
@@ -63,7 +61,7 @@
             <header class="mb-8 text-center">
                 <h1 class="text-4xl font-bold tracking-tight text-gray-800 sm:text-5xl">Eisenhower Matrix</h1>
                 <p class="mt-2 text-lg text-gray-600">AI-Powered Task Management.</p>
-                <div id="authSection" class="flex items-center justify-center min-h-[40px] mt-6"></div>
+                <p class="mt-4 text-sm text-gray-500">Manage your tasks, edit details inline, and keep everything in sync with Excel exports.</p>
             </header>
             <div class="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-3">
                 <div class="p-6 bg-white border border-gray-200 rounded-2xl shadow-lg lg:col-span-2">
@@ -105,6 +103,13 @@
                                 <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                             </div>
                         </label>
+                        <button onclick="ExcelService.exportTasks()" class="flex items-center justify-center w-full gap-2 px-4 py-2 font-semibold text-white transition bg-green-600 rounded-lg shadow hover:bg-green-700">
+                            <span>⬇️ Export Tasks to Excel</span>
+                        </button>
+                        <button onclick="document.getElementById('importFileInput').click()" class="flex items-center justify-center w-full gap-2 px-4 py-2 font-semibold text-white transition bg-blue-600 rounded-lg shadow hover:bg-blue-700">
+                            <span>⬆️ Import Tasks from Excel</span>
+                        </button>
+                        <input type="file" id="importFileInput" accept=".xlsx,.xls" class="hidden" onchange="ExcelService.handleFileUpload(event)">
                      </div>
                 </div>
             </div>
@@ -145,8 +150,42 @@
                 <h3 id="detailsTitle" class="text-2xl font-bold text-gray-800">Task Details</h3>
                 <button onclick="UI.closeDetailsModal()" class="p-1 text-gray-400 rounded-full hover:bg-gray-200 hover:text-gray-600">&times;</button>
             </div>
-            <div class="mt-4">
-                <div class="mb-4">
+            <div class="mt-4 space-y-6">
+                <div class="space-y-4">
+                    <div>
+                        <label for="detailTitleInput" class="text-sm font-medium text-gray-600">Task Title</label>
+                        <input id="detailTitleInput" type="text" class="w-full px-3 py-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Update the task title">
+                    </div>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                            <label for="detailQuadrantSelect" class="text-sm font-medium text-gray-600">Priority</label>
+                            <select id="detailQuadrantSelect" class="w-full px-3 py-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <option value="1">🔥 Urgent & Important</option>
+                                <option value="2">📅 Important</option>
+                                <option value="3">⚡ Urgent</option>
+                                <option value="4">🗑️ Eliminate</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="detailTimeInput" class="text-sm font-medium text-gray-600">Est. Minutes</label>
+                            <input id="detailTimeInput" type="number" min="5" class="w-full px-3 py-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="detailDueDateInput" class="text-sm font-medium text-gray-600">Due Date</label>
+                            <input id="detailDueDateInput" type="date" class="w-full px-3 py-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-600">
+                        <input id="detailCompletedCheckbox" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                        Mark as completed
+                    </label>
+                    <div class="flex justify-end">
+                        <button onclick="TaskManager.saveDetails()" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md shadow hover:bg-blue-700">
+                            <span>💾 Save Changes</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="pt-4 border-t border-gray-200">
                     <div class="flex items-center justify-between">
                         <h4 class="font-semibold text-gray-700">Sub-tasks</h4>
                         <button id="generateSubtasksBtn" onclick="GeminiService.generateSubtasks()" class="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-purple-500 rounded-md hover:bg-purple-600">
@@ -160,7 +199,7 @@
                         <button onclick="TaskManager.addSubtask()" class="px-3 py-1 font-semibold text-white bg-blue-500 rounded-md hover:bg-blue-600">Add</button>
                     </div>
                 </div>
-                <div>
+                <div class="pt-4 border-t border-gray-200">
                      <div class="flex items-center justify-between">
                         <h4 class="font-semibold text-gray-700">Notes</h4>
                         <button id="generateNotesBtn" onclick="GeminiService.generateNotes()" class="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-purple-500 rounded-md hover:bg-purple-600">
@@ -172,14 +211,15 @@
                 </div>
             </div>
              <div class="flex justify-end mt-6">
-                <button onclick="UI.closeDetailsModal()" class="px-6 py-2 font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">Done</button>
+                <button onclick="UI.closeDetailsModal()" class="px-6 py-2 font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">Close</button>
             </div>
         </div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <script>
     // --- CONFIGURATION --- //
-    const GOOGLE_CLIENT_ID = "434910578368-6ura496r68hb9onic2osm71c9es9ap8p.apps.googleusercontent.com";
     let GEMINI_API_KEY = "";
     
     // --- GEMINI AI SERVICE --- //
@@ -266,128 +306,97 @@
         }
     };
 
-    // --- GOOGLE AUTH & API HANDLER --- //
-    const GoogleService = {
-        tokenClient: null, isGapiLoaded: false, isLoggedIn: false, userProfile: null,
-        init() {
-            const googleConfigWarning = '<strong>Configuration Required:</strong> Please update the <code>GOOGLE_CLIENT_ID</code> in the script to enable Google Sign-In.';
-            if (GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID.apps.googleusercontent.com') {
-                document.getElementById('configWarning').innerHTML = googleConfigWarning;
-                document.getElementById('configWarning').classList.remove('hidden');
-                document.querySelector('#authSection').innerHTML = `<button class="inline-flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-gray-400 rounded-lg shadow-md cursor-not-allowed" disabled>Setup Required</button>`;
+    // --- EXCEL IMPORT/EXPORT SERVICE --- //
+    const ExcelService = {
+        exportTasks() {
+            if (!TaskManager.tasks.length) {
+                UI.showNotification('No tasks available to export yet.', 'error');
                 return;
             }
+            const worksheetData = TaskManager.tasks.map(task => ({
+                ID: task.id,
+                Title: task.title,
+                Quadrant: task.quadrant,
+                TimeBoxMinutes: task.timeBox,
+                DueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+                Completed: task.completed,
+                Notes: task.notes || '',
+                Subtasks: JSON.stringify(task.subtasks || [])
+            }));
+            const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
+            XLSX.writeFile(workbook, 'tasks.xlsx');
+            UI.showNotification('Tasks exported to Excel.', 'success');
+        },
+        handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) { return; }
+            this.importTasks(file);
+            event.target.value = '';
+        },
+        importTasks(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    if (!firstSheetName) {
+                        UI.showNotification('The Excel file does not contain any sheets.', 'error');
+                        return;
+                    }
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                    if (!rows.length) {
+                        UI.showNotification('No task data found in the Excel file.', 'error');
+                        return;
+                    }
+                    const importedTasks = rows.map((row, index) => {
+                        const parsedSubtasks = (() => {
+                            if (!row.Subtasks) { return []; }
+                            try {
+                                const value = typeof row.Subtasks === 'string' ? row.Subtasks : JSON.stringify(row.Subtasks);
+                                const json = JSON.parse(value);
+                                if (Array.isArray(json)) {
+                                    return json.map((subtask, idx) => ({
+                                        id: typeof subtask.id === 'number' ? subtask.id : idx + 1,
+                                        text: subtask.text || String(subtask),
+                                        completed: Boolean(subtask.completed)
+                                    }));
+                                }
+                            } catch (error) {
+                                return String(row.Subtasks).split('|').map((text, idx) => ({ id: idx + 1, text: text.trim(), completed: false }));
+                            }
+                            return [];
+                        })();
 
-            google.accounts.id.initialize({
-                client_id: GOOGLE_CLIENT_ID,
-                callback: this.handleCredentialResponse.bind(this),
-                auto_select: true
-            });
-            google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    this.renderSignInButton();
-                }
-            });
-            gapi.load('client', this.initGapiClient.bind(this));
-        },
-        async initGapiClient() {
-            await gapi.client.init({ discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest", "https://www.googleapis.com/discovery/v1/apis/tasks/v1/rest"] });
-            this.isGapiLoaded = true;
-            if (this.isLoggedIn) {
-                this.syncWithGoogleTasks();
-            }
-        },
-        handleCredentialResponse(response) {
-            this.userProfile = this.decodeJwt(response.credential);
-            this.isLoggedIn = true;
-            this.tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: GOOGLE_CLIENT_ID,
-                scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks',
-                callback: '',
-            });
-            this.updateUIAfterLogin();
-            TaskManager.render();
-            this.syncWithGoogleTasks();
-            setInterval(() => this.syncWithGoogleTasks(), 300000);
-        },
-        _makeApiCall(callback) {
-            if (!this.isLoggedIn || !this.tokenClient) { UI.showNotification("Please sign in to use Google features.", "error"); return; }
-            if (!this.isGapiLoaded) { UI.showNotification("Google APIs are still loading. Please try again.", "error"); return; }
-            this.tokenClient.callback = (tokenResponse) => {
-                if (tokenResponse && tokenResponse.access_token) {
-                    gapi.client.setToken(tokenResponse);
-                    callback();
-                } else {
-                    console.error("Authorization failed.", tokenResponse);
-                    UI.showNotification("Google authorization failed. Please grant permissions.", "error");
+                        const dueDateValue = row.DueDate ? new Date(row.DueDate) : null;
+                        const isValidDate = dueDateValue && !isNaN(dueDateValue.getTime());
+
+                        return {
+                            id: Number(row.ID) || index + 1,
+                            title: row.Title ? String(row.Title).trim() : `Imported Task ${index + 1}`,
+                            quadrant: Number(row.Quadrant) >= 1 && Number(row.Quadrant) <= 4 ? Number(row.Quadrant) : 2,
+                            timeBox: Number(row.TimeBoxMinutes) > 0 ? Number(row.TimeBoxMinutes) : 25,
+                            dueDate: isValidDate ? new Date(dueDateValue.toISOString().split('T')[0] + 'T00:00:00').toISOString() : null,
+                            completed: String(row.Completed).toLowerCase() === 'true',
+                            createdAt: new Date().toISOString(),
+                            notes: row.Notes ? String(row.Notes) : '',
+                            subtasks: parsedSubtasks
+                        };
+                    });
+
+                    TaskManager.replaceTasks(importedTasks);
+                    UI.showNotification('Tasks imported from Excel.', 'success');
+                } catch (error) {
+                    console.error('Error importing tasks from Excel:', error);
+                    UI.showNotification('Failed to import tasks. Please verify the file format.', 'error');
                 }
             };
-            this.tokenClient.requestAccessToken({ prompt: 'consent' });
-        },
-        async syncWithGoogleTasks() {
-             if (!this.isLoggedIn) return;
-            this._makeApiCall(async () => {
-                try {
-                    const response = await gapi.client.tasks.tasks.list({ tasklist: '@default', showCompleted: true, showHidden: false });
-                    TaskManager.syncTasks(response.result.items || []);
-                } catch (err) { console.error("Error syncing with Google Tasks:", err); }
-            });
-        },
-        addToCalendar(task, evt = null) {
-            if (evt) evt.stopPropagation();
-             this._makeApiCall(async () => {
-                const event = {
-                    'summary': task.title,
-                    'description': `Quadrant: ${task.quadrant}`,
-                    'start': { 'dateTime': task.dueDate || new Date().toISOString(), 'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone },
-                    'end': { 'dateTime': task.dueDate || new Date(new Date().getTime() + task.timeBox * 60000).toISOString(), 'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone },
-                };
-                try {
-                    await gapi.client.calendar.events.insert({ 'calendarId': 'primary', 'resource': event });
-                    UI.showNotification("Task added to Google Calendar!", "success");
-                } catch (err) { console.error("Error adding to Calendar:", err); UI.showNotification("Could not add to Google Calendar.", "error");}
-            });
-        },
-        addToTasks(task, evt = null) {
-            if (evt) evt.stopPropagation();
-             this._makeApiCall(async () => {
-                try {
-                    const res = await gapi.client.tasks.tasks.insert({
-                        tasklist: '@default',
-                        resource: { title: task.title, notes: `Quadrant: ${task.quadrant}\n\nNotes:\n${task.notes}`, due: task.dueDate }
-                    });
-                    task.googleTaskId = res.result.id;
-                    TaskManager.saveAndRender();
-                    UI.showNotification("Task added to Google Tasks!", "success");
-                } catch (err) { console.error("Error adding to Tasks:", err); UI.showNotification("Could not add to Google Tasks.", "error");}
-            });
-        },
-        updateTask(task) {
-             if (!task.googleTaskId) return;
-            this._makeApiCall(async () => {
-                try {
-                    await gapi.client.tasks.tasks.patch({
-                        tasklist: '@default',
-                        task: task.googleTaskId,
-                        resource: { id: task.googleTaskId, status: task.completed ? 'completed' : 'needsAction' }
-                    });
-                } catch (err) { console.error("Error updating Google Task:", err); }
-            });
-        },
-        signIn() { if (google.accounts.id) { google.accounts.id.prompt(); } },
-        signOut() {
-            if (gapi.client.getToken()) { google.accounts.oauth2.revoke(gapi.client.getToken().access_token, () => {}); gapi.client.setToken(null); }
-            google.accounts.id.disableAutoSelect();
-            this.isLoggedIn = false; this.userProfile = null; this.tokenClient = null;
-            this.renderSignInButton(); TaskManager.render(); UI.showNotification("You have been signed out.");
-        },
-        renderSignInButton() {
-            document.getElementById('authSection').innerHTML = `<button class="inline-flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700" onclick="GoogleService.signIn()"><svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.19,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.19,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.19,22C17.6,22 21.54,18.33 21.54,12.25C21.54,11.66 21.48,11.38 21.35,11.1Z"></path></svg> Sign in with Google</button>`;
-        },
-        updateUIAfterLogin() {
-             document.getElementById('authSection').innerHTML = `<div class="flex items-center gap-3"><img src="${this.userProfile.picture}" alt="User" class="w-10 h-10 border-2 border-white rounded-full shadow-md"><span class="font-semibold text-gray-800">${this.userProfile.name}</span><button class="px-3 py-1 text-sm font-medium text-gray-700 bg-white rounded-md hover:bg-gray-200" onclick="GoogleService.signOut()">Sign Out</button></div>`;
-        },
-        decodeJwt(token) { try { return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); } catch (e) { console.error('Error decoding JWT', e); return null; } }
+            reader.onerror = () => UI.showNotification('Unable to read the selected file.', 'error');
+            reader.readAsArrayBuffer(file);
+        }
     };
     
     // --- TIMER --- //
@@ -480,7 +489,22 @@
             if (!task) return;
 
             document.getElementById('detailsTitle').textContent = task.title;
-            document.getElementById('taskNotes').value = task.notes || '';
+
+            const titleInput = document.getElementById('detailTitleInput');
+            const quadrantSelect = document.getElementById('detailQuadrantSelect');
+            const timeInput = document.getElementById('detailTimeInput');
+            const dueDateInput = document.getElementById('detailDueDateInput');
+            const completedCheckbox = document.getElementById('detailCompletedCheckbox');
+            const notesArea = document.getElementById('taskNotes');
+
+            if (titleInput) { titleInput.value = task.title; }
+            if (quadrantSelect) { quadrantSelect.value = task.quadrant; }
+            if (timeInput) { timeInput.value = task.timeBox; }
+            if (dueDateInput) {
+                dueDateInput.value = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
+            }
+            if (completedCheckbox) { completedCheckbox.checked = Boolean(task.completed); }
+            if (notesArea) { notesArea.value = task.notes || ''; }
             
             const subtasksContainer = document.getElementById('subtasksContainer');
             subtasksContainer.innerHTML = (task.subtasks || []).map(st => `
@@ -495,7 +519,9 @@
             modal.classList.remove('opacity-0', 'pointer-events-none');
             modal.querySelector('.modal-content').classList.remove('scale-95');
 
-            document.getElementById('taskNotes').onblur = () => TaskManager.updateNotes(document.getElementById('taskNotes').value);
+            if (notesArea) {
+                notesArea.onblur = () => TaskManager.updateNotes(notesArea.value);
+            }
         },
         closeDetailsModal() {
             this.currentDetailTaskId = null;
@@ -508,7 +534,7 @@
              const warningDiv = document.getElementById('configWarning');
              warningDiv.innerHTML = message;
              warningDiv.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
-             warningDiv.classList.add(type === 'success' ? 'bg-green-100' : 'bg-green-800', type === 'success' ? 'text-green-800' : 'text-red-800');
+             warningDiv.classList.add(type === 'success' ? 'bg-green-100' : 'bg-red-100', type === 'success' ? 'text-green-800' : 'text-red-800');
              setTimeout(() => {
                 warningDiv.classList.add('hidden');
              }, 5000)
@@ -522,7 +548,6 @@
         editingTaskId: null,
         init() {
             GEMINI_API_KEY = localStorage.getItem('geminiApiKey') || '';
-            GoogleService.init();
             this.render();
         },
         addTask(event) {
@@ -566,7 +591,7 @@
         toggleComplete(taskId, evt = null) {
             if (evt) evt.stopPropagation();
             const task = this.tasks.find(t => t.id == taskId);
-            if(task) { task.completed = !task.completed; GoogleService.updateTask(task); this.saveAndRender(); }
+            if(task) { task.completed = !task.completed; this.saveAndRender(); }
         },
         addSubtask(text, fromAI = false) {
             const taskId = UI.currentDetailTaskId;
@@ -608,16 +633,53 @@
             const task = this.tasks.find(t => t.id === taskId);
             if (task) { task.notes = notes; this.saveAndRender(); }
         },
-        syncTasks(googleTasks) {
-            let updated = false;
-            googleTasks.forEach(gTask => {
-                const localTask = this.tasks.find(t => t.googleTaskId === gTask.id);
-                if (localTask) {
-                    const isGoogleCompleted = gTask.status === 'completed';
-                    if (localTask.completed !== isGoogleCompleted) { localTask.completed = isGoogleCompleted; updated = true; }
+        saveDetails() {
+            const taskId = UI.currentDetailTaskId;
+            const task = this.tasks.find(t => t.id === taskId);
+            if (!task) { return; }
+
+            const titleInput = document.getElementById('detailTitleInput');
+            const quadrantSelect = document.getElementById('detailQuadrantSelect');
+            const timeInput = document.getElementById('detailTimeInput');
+            const dueDateInput = document.getElementById('detailDueDateInput');
+            const completedCheckbox = document.getElementById('detailCompletedCheckbox');
+
+            if (titleInput && titleInput.value.trim()) {
+                task.title = titleInput.value.trim();
+            }
+
+            if (quadrantSelect) {
+                const quadrantValue = parseInt(quadrantSelect.value, 10);
+                if (quadrantValue >= 1 && quadrantValue <= 4) {
+                    task.quadrant = quadrantValue;
                 }
-            });
-            if (updated) { this.saveAndRender(); }
+            }
+
+            if (timeInput) {
+                const minutes = parseInt(timeInput.value, 10);
+                if (!isNaN(minutes) && minutes > 0) {
+                    task.timeBox = minutes;
+                }
+            }
+
+            if (dueDateInput) {
+                const dueDateValue = dueDateInput.value;
+                task.dueDate = dueDateValue ? new Date(dueDateValue + 'T00:00:00').toISOString() : null;
+            }
+
+            if (completedCheckbox) {
+                task.completed = completedCheckbox.checked;
+            }
+
+            this.saveAndRender();
+            UI.openDetailsModal(taskId, null);
+            UI.showNotification('Task details updated.', 'success');
+        },
+        replaceTasks(newTasks) {
+            this.tasks = newTasks;
+            const maxId = this.tasks.reduce((max, task) => Math.max(max, task.id || 0), 0);
+            this.idCounter = maxId + 1;
+            this.saveAndRender();
         },
         moveTask(taskId, newQuadrant) { const task = this.tasks.find(t => t.id == taskId); if (task) { task.quadrant = newQuadrant; this.saveAndRender(); } },
         dragStart(event, taskId) { 
@@ -673,9 +735,7 @@
                         </div>
                         <div class="flex items-center gap-1 ml-2 task-actions">
                              <button title="Start Timer" onclick="Timer.startFromTask(${task.id}, event)" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-yellow-500">⏱️</button>
-                             <button title="Details" onclick="UI.openDetailsModal(${task.id}, event)" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📝</button>
-                             <button title="Add to Google Calendar" onclick='GoogleService.addToCalendar(${JSON.stringify(task)}, event)' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📅</button>
-                             <button title="Add to Google Tasks" onclick='GoogleService.addToTasks(${JSON.stringify(task)}, event)' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-green-500">✔️</button>
+                             <button title="Edit Details" onclick="UI.openDetailsModal(${task.id}, event)" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📝</button>
                             <button title="Mark as ${task.completed ? 'Incomplete' : 'Complete'}" onclick="TaskManager.toggleComplete(${task.id}, event)" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200">${task.completed ? '↩️' : '✅'}</button>
                             <button title="Delete Task" onclick="TaskManager.deleteTask(${task.id}, event)" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-red-500">🗑️</button>
                         </div>
