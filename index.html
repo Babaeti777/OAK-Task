@@ -333,6 +333,22 @@
                 } catch (err) { console.error("Error syncing with Google Tasks:", err); }
             });
         },
+        addToCalendarById(taskId) {
+             const task = TaskManager.tasks.find(t => t.id === taskId);
+             if (!task) {
+                 UI.showNotification("Unable to find the selected task.", "error");
+                 return;
+             }
+             this.addToCalendar(task);
+        },
+        addToTasksById(taskId) {
+             const task = TaskManager.tasks.find(t => t.id === taskId);
+             if (!task) {
+                 UI.showNotification("Unable to find the selected task.", "error");
+                 return;
+             }
+             this.addToTasks(task);
+        },
         addToCalendar(task) {
              this._makeApiCall(async () => {
                 const event = {
@@ -670,8 +686,8 @@
                         <div class="flex items-center gap-1 ml-2 task-actions">
                              <button title="Start Timer" onclick="event.stopPropagation(); Timer.startFromTask(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-yellow-500">⏱️</button>
                              <button title="Details" onclick="event.stopPropagation(); UI.openDetailsModal(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📝</button>
-                             <button title="Add to Google Calendar" onclick='event.stopPropagation(); GoogleService.addToCalendar(${JSON.stringify(task)})' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📅</button>
-                             <button title="Add to Google Tasks" onclick='event.stopPropagation(); GoogleService.addToTasks(${JSON.stringify(task)})' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-green-500">✔️</button>
+                             <button title="Add to Google Calendar" onclick='event.stopPropagation(); GoogleService.addToCalendarById(${task.id})' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📅</button>
+                             <button title="Add to Google Tasks" onclick='event.stopPropagation(); GoogleService.addToTasksById(${task.id})' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-green-500">✔️</button>
                             <button title="Mark as ${task.completed ? 'Incomplete' : 'Complete'}" onclick="TaskManager.toggleComplete(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200">${task.completed ? '↩️' : '✅'}</button>
                             <button title="Delete Task" onclick="TaskManager.deleteTask(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-red-500">🗑️</button>
                         </div>
