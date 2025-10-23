@@ -103,13 +103,19 @@
                                 <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                             </div>
                         </label>
-                        <button onclick="ExcelService.exportTasks()" class="flex items-center justify-center w-full gap-2 px-4 py-2 font-semibold text-white transition bg-green-600 rounded-lg shadow hover:bg-green-700">
-                            <span>⬇️ Export Tasks to Excel</span>
-                        </button>
-                        <button onclick="document.getElementById('importFileInput').click()" class="flex items-center justify-center w-full gap-2 px-4 py-2 font-semibold text-white transition bg-blue-600 rounded-lg shadow hover:bg-blue-700">
-                            <span>⬆️ Import Tasks from Excel</span>
-                        </button>
-                        <input type="file" id="importFileInput" accept=".xlsx,.xls" class="hidden" onchange="ExcelService.handleFileUpload(event)">
+                        <div class="p-4 bg-gray-100 rounded-lg">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="font-semibold text-gray-700">OneDrive Sync</p>
+                                    <p id="oneDriveStatus" class="mt-1 text-sm text-gray-600">Not connected.</p>
+                                </div>
+                                <div class="flex flex-col items-stretch gap-2 min-w-[140px]">
+                                    <button id="oneDriveSignInBtn" onclick="OneDriveService.signIn()" class="px-3 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700">Sign in</button>
+                                    <button id="oneDriveSignOutBtn" onclick="OneDriveService.signOut()" class="hidden px-3 py-2 text-sm font-semibold text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200">Sign out</button>
+                                </div>
+                            </div>
+                            <p class="mt-3 text-xs text-gray-500">Changes are saved automatically to OneDrive after you connect.</p>
+                        </div>
                      </div>
                 </div>
             </div>
@@ -216,11 +222,17 @@
         </div>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js" integrity="sha384-p+NQGQ9dI4QmqC6cKUu9Bj83oX6TA8XyqRLrX9Zjrs8ZgM9MJ3ZOjcRQtFoLSI93" crossorigin="anonymous"></script>
 
     <script>
     // --- CONFIGURATION --- //
     let GEMINI_API_KEY = "";
+    const ONEDRIVE_CONFIG = {
+        // Set this to your Microsoft Entra application (client) ID before enabling sync.
+        clientId: "",
+        tenantId: "common",
+        filePath: "/Documents/EisenhowerTasks.json"
+    };
     
     // --- GEMINI AI SERVICE --- //
     const GeminiService = {
@@ -306,96 +318,226 @@
         }
     };
 
-    // --- EXCEL IMPORT/EXPORT SERVICE --- //
-    const ExcelService = {
-        exportTasks() {
-            if (!TaskManager.tasks.length) {
-                UI.showNotification('No tasks available to export yet.', 'error');
+    // --- ONEDRIVE SYNC SERVICE --- //
+    const OneDriveService = {
+        msalInstance: null,
+        account: null,
+        statusElement: null,
+        signInButton: null,
+        signOutButton: null,
+        autoSaveTimer: null,
+        pendingPayload: null,
+        suppressNextSave: false,
+        configured: Boolean(ONEDRIVE_CONFIG.clientId),
+        init() {
+            this.configured = Boolean(ONEDRIVE_CONFIG.clientId);
+            this.statusElement = document.getElementById('oneDriveStatus');
+            this.signInButton = document.getElementById('oneDriveSignInBtn');
+            this.signOutButton = document.getElementById('oneDriveSignOutBtn');
+
+            if (!this.statusElement) {
                 return;
             }
-            const worksheetData = TaskManager.tasks.map(task => ({
-                ID: task.id,
-                Title: task.title,
-                Quadrant: task.quadrant,
-                TimeBoxMinutes: task.timeBox,
-                DueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
-                Completed: task.completed,
-                Notes: task.notes || '',
-                Subtasks: JSON.stringify(task.subtasks || [])
-            }));
-            const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
-            XLSX.writeFile(workbook, 'tasks.xlsx');
-            UI.showNotification('Tasks exported to Excel.', 'success');
-        },
-        handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) { return; }
-            this.importTasks(file);
-            event.target.value = '';
-        },
-        importTasks(file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    if (!firstSheetName) {
-                        UI.showNotification('The Excel file does not contain any sheets.', 'error');
-                        return;
+
+            if (!this.configured) {
+                this.setStatus('OneDrive sync is not configured. Add your Microsoft app Client ID in ONEDRIVE_CONFIG.', 'error');
+                this.updateButtons(false, true);
+                return;
+            }
+
+            if (typeof msal === 'undefined') {
+                this.setStatus('Microsoft authentication library could not be loaded.', 'error');
+                this.updateButtons(false);
+                return;
+            }
+
+            this.msalInstance = new msal.PublicClientApplication({
+                auth: {
+                    clientId: ONEDRIVE_CONFIG.clientId,
+                    authority: `https://login.microsoftonline.com/${ONEDRIVE_CONFIG.tenantId}`,
+                    redirectUri: window.location.origin + window.location.pathname
+                },
+                cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
+            });
+
+            this.updateButtons(false);
+            this.setStatus('Sign in to sync with OneDrive.', 'default');
+
+            this.msalInstance.handleRedirectPromise()
+                .then((response) => {
+                    if (response && response.account) {
+                        this.account = response.account;
+                    } else {
+                        const accounts = this.msalInstance.getAllAccounts();
+                        if (accounts.length > 0) {
+                            this.account = accounts[0];
+                        }
                     }
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-                    if (!rows.length) {
-                        UI.showNotification('No task data found in the Excel file.', 'error');
-                        return;
+
+                    if (this.account) {
+                        this.msalInstance.setActiveAccount(this.account);
+                        this.updateButtons(true);
+                        this.setStatus(`Connected as ${this.account.username}`, 'success');
+                        this.loadTasks();
                     }
-                    const importedTasks = rows.map((row, index) => {
-                        const parsedSubtasks = (() => {
-                            if (!row.Subtasks) { return []; }
-                            try {
-                                const value = typeof row.Subtasks === 'string' ? row.Subtasks : JSON.stringify(row.Subtasks);
-                                const json = JSON.parse(value);
-                                if (Array.isArray(json)) {
-                                    return json.map((subtask, idx) => ({
-                                        id: typeof subtask.id === 'number' ? subtask.id : idx + 1,
-                                        text: subtask.text || String(subtask),
-                                        completed: Boolean(subtask.completed)
-                                    }));
-                                }
-                            } catch (error) {
-                                return String(row.Subtasks).split('|').map((text, idx) => ({ id: idx + 1, text: text.trim(), completed: false }));
-                            }
-                            return [];
-                        })();
-
-                        const dueDateValue = row.DueDate ? new Date(row.DueDate) : null;
-                        const isValidDate = dueDateValue && !isNaN(dueDateValue.getTime());
-
-                        return {
-                            id: Number(row.ID) || index + 1,
-                            title: row.Title ? String(row.Title).trim() : `Imported Task ${index + 1}`,
-                            quadrant: Number(row.Quadrant) >= 1 && Number(row.Quadrant) <= 4 ? Number(row.Quadrant) : 2,
-                            timeBox: Number(row.TimeBoxMinutes) > 0 ? Number(row.TimeBoxMinutes) : 25,
-                            dueDate: isValidDate ? new Date(dueDateValue.toISOString().split('T')[0] + 'T00:00:00').toISOString() : null,
-                            completed: String(row.Completed).toLowerCase() === 'true',
-                            createdAt: new Date().toISOString(),
-                            notes: row.Notes ? String(row.Notes) : '',
-                            subtasks: parsedSubtasks
-                        };
-                    });
-
-                    TaskManager.replaceTasks(importedTasks);
-                    UI.showNotification('Tasks imported from Excel.', 'success');
-                } catch (error) {
-                    console.error('Error importing tasks from Excel:', error);
-                    UI.showNotification('Failed to import tasks. Please verify the file format.', 'error');
+                })
+                .catch((error) => {
+                    console.error('OneDrive initialization error:', error);
+                    this.setStatus('Failed to initialize OneDrive sync.', 'error');
+                });
+        },
+        setStatus(message, intent = 'default') {
+            if (!this.statusElement) return;
+            this.statusElement.textContent = message;
+            this.statusElement.classList.remove('text-gray-600', 'text-green-600', 'text-red-600');
+            const intentClass = intent === 'success' ? 'text-green-600' : intent === 'error' ? 'text-red-600' : 'text-gray-600';
+            this.statusElement.classList.add(intentClass);
+        },
+        updateButtons(isSignedIn, disableSignIn = false) {
+            if (this.signInButton) {
+                this.signInButton.classList.toggle('hidden', isSignedIn || disableSignIn);
+                this.signInButton.disabled = disableSignIn;
+            }
+            if (this.signOutButton) {
+                this.signOutButton.classList.toggle('hidden', !isSignedIn);
+            }
+        },
+        isReady() {
+            return this.configured && this.msalInstance && this.account;
+        },
+        getContentUrl() {
+            const path = ONEDRIVE_CONFIG.filePath.startsWith('/') ? ONEDRIVE_CONFIG.filePath : `/${ONEDRIVE_CONFIG.filePath}`;
+            return `https://graph.microsoft.com/v1.0/me/drive/root:${encodeURI(path)}:/content`;
+        },
+        async signIn() {
+            if (!this.msalInstance) {
+                this.init();
+                if (!this.msalInstance) return;
+            }
+            try {
+                const response = await this.msalInstance.loginPopup({ scopes: ['Files.ReadWrite.All'] });
+                if (response && response.account) {
+                    this.account = response.account;
+                    this.msalInstance.setActiveAccount(this.account);
+                    this.updateButtons(true);
+                    this.setStatus(`Connected as ${this.account.username}`, 'success');
+                    await this.loadTasks();
                 }
-            };
-            reader.onerror = () => UI.showNotification('Unable to read the selected file.', 'error');
-            reader.readAsArrayBuffer(file);
+            } catch (error) {
+                if (error && (error.errorCode === 'user_cancelled' || error.errorCode === 'user_cancelled_login')) {
+                    this.setStatus('Sign-in was cancelled.', 'error');
+                } else {
+                    console.error('OneDrive sign-in error:', error);
+                    this.setStatus('Failed to sign in to OneDrive.', 'error');
+                }
+            }
+        },
+        async signOut() {
+            if (!this.msalInstance || !this.account) return;
+            try {
+                await this.msalInstance.logoutPopup({ account: this.account });
+            } catch (error) {
+                console.error('OneDrive sign-out error:', error);
+            }
+            this.account = null;
+            if (this.autoSaveTimer) {
+                clearTimeout(this.autoSaveTimer);
+                this.autoSaveTimer = null;
+            }
+            this.pendingPayload = null;
+            this.updateButtons(false);
+            this.setStatus('Sign in to sync with OneDrive.', 'default');
+        },
+        async acquireToken() {
+            if (!this.isReady()) {
+                throw new Error('Not authenticated with OneDrive.');
+            }
+            try {
+                return await this.msalInstance.acquireTokenSilent({
+                    scopes: ['Files.ReadWrite.All'],
+                    account: this.account
+                });
+            } catch (error) {
+                if (typeof msal !== 'undefined' && error instanceof msal.InteractionRequiredAuthError) {
+                    return this.msalInstance.acquireTokenPopup({ scopes: ['Files.ReadWrite.All'] });
+                }
+                throw error;
+            }
+        },
+        async loadTasks() {
+            if (!this.isReady()) return;
+            try {
+                this.setStatus('Syncing with OneDrive…', 'default');
+                const tokenResponse = await this.acquireToken();
+                const response = await fetch(this.getContentUrl(), {
+                    headers: { Authorization: `Bearer ${tokenResponse.accessToken}` }
+                });
+                if (response.status === 404) {
+                    this.setStatus('A new OneDrive task file will be created on your next change.', 'default');
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`Unexpected status ${response.status}`);
+                }
+                const text = await response.text();
+                let data = [];
+                if (text) {
+                    try {
+                        data = JSON.parse(text);
+                    } catch (parseError) {
+                        throw new Error('Unable to parse OneDrive task data.');
+                    }
+                }
+                if (Array.isArray(data)) {
+                    this.suppressNextSave = true;
+                    TaskManager.replaceTasks(data);
+                    this.setStatus('Tasks synced from OneDrive.', 'success');
+                } else {
+                    throw new Error('Unexpected data format.');
+                }
+            } catch (error) {
+                console.error('OneDrive load error:', error);
+                this.setStatus('Failed to load tasks from OneDrive.', 'error');
+            }
+        },
+        queueSave(tasks) {
+            if (!this.isReady()) return;
+            if (this.suppressNextSave) {
+                this.suppressNextSave = false;
+                return;
+            }
+            this.pendingPayload = JSON.stringify(tasks);
+            if (this.autoSaveTimer) {
+                clearTimeout(this.autoSaveTimer);
+            }
+            this.autoSaveTimer = setTimeout(() => {
+                const payload = this.pendingPayload;
+                this.pendingPayload = null;
+                this.saveTasks(payload);
+            }, 1500);
+            this.setStatus('Pending changes…', 'default');
+        },
+        async saveTasks(payload) {
+            if (!this.isReady() || !payload) return;
+            try {
+                this.setStatus('Saving changes to OneDrive…', 'default');
+                const tokenResponse = await this.acquireToken();
+                const response = await fetch(this.getContentUrl(), {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: `Bearer ${tokenResponse.accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: payload
+                });
+                if (!response.ok) {
+                    throw new Error(`Unexpected status ${response.status}`);
+                }
+                this.setStatus('All changes saved to OneDrive.', 'success');
+            } catch (error) {
+                console.error('OneDrive save error:', error);
+                this.setStatus('Failed to save changes to OneDrive.', 'error');
+            }
         }
     };
     
@@ -549,6 +691,7 @@
         init() {
             GEMINI_API_KEY = localStorage.getItem('geminiApiKey') || '';
             this.render();
+            OneDriveService.init();
         },
         addTask(event) {
             event.preventDefault();
@@ -700,7 +843,13 @@
             const newQuadrant = parseInt(event.currentTarget.dataset.quadrant);
             this.moveTask(taskId, newQuadrant);
         },
-        saveAndRender() { this.checkOverdueTasks(); localStorage.setItem('tasks', JSON.stringify(this.tasks)); localStorage.setItem('idCounter', this.idCounter); this.render(); },
+        saveAndRender() {
+            this.checkOverdueTasks();
+            localStorage.setItem('tasks', JSON.stringify(this.tasks));
+            localStorage.setItem('idCounter', this.idCounter);
+            this.render();
+            OneDriveService.queueSave(this.tasks);
+        },
         checkOverdueTasks() {
             const now = new Date();
             this.tasks.forEach(task => { if (task.dueDate && !task.completed) { if (new Date(task.dueDate) < now) { task.quadrant = 1; } } });
