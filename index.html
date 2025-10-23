@@ -233,6 +233,8 @@
         tenantId: "common",
         filePath: "/Documents/EisenhowerTasks.json"
     };
+
+    const GEMINI_MODEL = "gemini-1.5-flash-latest";
     
     // --- GEMINI AI SERVICE --- //
     const GeminiService = {
@@ -265,7 +267,7 @@
                     return null;
                 }
             }
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
             const payload = { contents: [{ role: "user", parts: [{ text: promptText }] }] };
 
             try {
