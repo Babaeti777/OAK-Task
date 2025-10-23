@@ -570,8 +570,8 @@
             this.isRunning = true;
             document.getElementById('timer-fullscreen-pause').classList.remove('hidden');
             document.getElementById('timer-fullscreen-start').classList.add('hidden');
+            this.updateFullscreenDisplay();
             this.interval = setInterval(this.tick.bind(this), 1000);
-            this.tick();
             TaskManager.render();
         },
         tick() {
