@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <base target="_top">
     <title>Eisenhower Matrix - AI Task Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -715,8 +716,8 @@
     
     // --- TASK MANAGER --- //
     const TaskManager = {
-        tasks: JSON.parse(localStorage.getItem('tasks')) || [],
-        idCounter: parseInt(localStorage.getItem('idCounter')) || 1,
+        tasks: [],
+        idCounter: 1,
         editingTaskId: null,
         init() {
             if (typeof localStorage !== 'undefined' && localStorage.getItem('geminiApiKey')) {
@@ -1000,6 +1001,20 @@
         },
     };
     TaskManager.init();
+
+    (function () {
+        const warning = document.getElementById('configWarning');
+        if (typeof google !== 'undefined' && google.script && google.script.host) {
+            try {
+                google.script.host.setHeight(640);
+            } catch (err) {
+                console.warn('Unable to set sidebar height', err);
+            }
+        } else if (warning) {
+            warning.textContent = 'To use this dashboard inside Google Sheets, import both "Code.gs" and "index.html" into an Apps Script project and open it from the custom "Eisenhower Matrix" menu.';
+            warning.classList.remove('hidden');
+        }
+    })();
     </script>
 </body>
 </html>
