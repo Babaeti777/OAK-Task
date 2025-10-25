@@ -391,21 +391,35 @@
                     this.setStatus('Failed to initialize OneDrive sync.', 'error');
                 });
         },
-        setStatus(message, intent = 'default') {
-            if (!this.statusElement) return;
-            this.statusElement.textContent = message;
-            this.statusElement.classList.remove('text-gray-600', 'text-green-600', 'text-red-600');
-            const intentClass = intent === 'success' ? 'text-green-600' : intent === 'error' ? 'text-red-600' : 'text-gray-600';
-            this.statusElement.classList.add(intentClass);
+        addToCalendarById(taskId) {
+             const task = TaskManager.tasks.find(t => t.id === taskId);
+             if (!task) {
+                 UI.showNotification("Unable to find the selected task.", "error");
+                 return;
+             }
+             this.addToCalendar(task);
         },
-        updateButtons(isSignedIn, disableSignIn = false) {
-            if (this.signInButton) {
-                this.signInButton.classList.toggle('hidden', isSignedIn || disableSignIn);
-                this.signInButton.disabled = disableSignIn;
-            }
-            if (this.signOutButton) {
-                this.signOutButton.classList.toggle('hidden', !isSignedIn);
-            }
+        addToTasksById(taskId) {
+             const task = TaskManager.tasks.find(t => t.id === taskId);
+             if (!task) {
+                 UI.showNotification("Unable to find the selected task.", "error");
+                 return;
+             }
+             this.addToTasks(task);
+        },
+        addToCalendar(task) {
+             this._makeApiCall(async () => {
+                const event = {
+                    'summary': task.title,
+                    'description': `Quadrant: ${task.quadrant}`,
+                    'start': { 'dateTime': task.dueDate || new Date().toISOString(), 'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone },
+                    'end': { 'dateTime': task.dueDate || new Date(new Date().getTime() + task.timeBox * 60000).toISOString(), 'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone },
+                };
+                try {
+                    await gapi.client.calendar.events.insert({ 'calendarId': 'primary', 'resource': event });
+                    UI.showNotification("Task added to Google Calendar!", "success");
+                } catch (err) { console.error("Error adding to Calendar:", err); UI.showNotification("Could not add to Google Calendar.", "error");}
+            });
         },
         isReady() {
             return this.configured && this.msalInstance && this.account;
@@ -912,91 +926,33 @@
                 quadrantTasks.forEach((task) => {
                     const isRunning = Timer.currentTask && Timer.currentTask.id === task.id;
                     const isOverdue = task.dueDate && !task.completed && new Date(task.dueDate) < new Date();
-
-                    const taskWrapper = document.createElement('div');
-                    taskWrapper.className = `task flex items-center justify-between p-3 transition duration-200 ease-in-out bg-white border-l-4 rounded-lg shadow-sm ${task.completed ? 'completed opacity-60' : ''} ${isRunning ? 'running' : ''} ${isOverdue ? 'overdue' : ''} quadrant-${task.quadrant}-border`;
-                    taskWrapper.setAttribute('draggable', 'true');
-                    taskWrapper.addEventListener('dragstart', (event) => TaskManager.dragStart(event, task.id));
-                    taskWrapper.addEventListener('dragend', (event) => TaskManager.dragEnd(event));
-
-                    const titleContainer = document.createElement('div');
-                    titleContainer.className = 'flex-1 min-w-0 task-title';
-
-                    if (this.editingTaskId === task.id) {
-                        const input = document.createElement('input');
-                        input.type = 'text';
-                        input.className = 'task-title-input';
-                        input.dataset.taskId = String(task.id);
-                        input.value = task.title;
-                        input.addEventListener('blur', () => TaskManager.saveTaskTitle(task.id, input.value));
-                        input.addEventListener('keydown', (event) => {
-                            if (event.key === 'Enter') {
-                                event.preventDefault();
-                                input.blur();
-                            }
-                            if (event.key === 'Escape') {
-                                TaskManager.editTask(null, event);
-                            }
-                        });
-                        titleContainer.appendChild(input);
-                    } else {
-                        const titleText = document.createElement('p');
-                        titleText.className = 'font-semibold text-gray-800 truncate task-title-text';
-                        titleText.textContent = task.title;
-                        titleText.addEventListener('click', (event) => TaskManager.editTask(task.id, event));
-                        titleContainer.appendChild(titleText);
-                    }
-
-                    const meta = document.createElement('div');
-                    meta.className = 'flex items-center gap-3 mt-1 text-xs text-gray-500 task-meta';
-                    if (task.dueDate) {
-                        const dueSpan = document.createElement('span');
-                        dueSpan.textContent = `📅 ${new Date(task.dueDate).toLocaleDateString()}`;
-                        meta.appendChild(dueSpan);
-                    }
-                    const timeSpan = document.createElement('span');
-                    timeSpan.textContent = `⏱️ ${task.timeBox}m`;
-                    meta.appendChild(timeSpan);
-                    titleContainer.appendChild(meta);
-
-                    const actions = document.createElement('div');
-                    actions.className = 'flex items-center gap-1 ml-2 task-actions';
-
-                    const startButton = document.createElement('button');
-                    startButton.type = 'button';
-                    startButton.title = 'Start Timer';
-                    startButton.className = 'p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-yellow-500';
-                    startButton.textContent = '⏱️';
-                    startButton.addEventListener('click', (event) => Timer.startFromTask(task.id, event));
-
-                    const detailsButton = document.createElement('button');
-                    detailsButton.type = 'button';
-                    detailsButton.title = 'Edit Details';
-                    detailsButton.className = 'p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500';
-                    detailsButton.textContent = '📝';
-                    detailsButton.addEventListener('click', (event) => UI.openDetailsModal(task.id, event));
-
-                    const toggleButton = document.createElement('button');
-                    toggleButton.type = 'button';
-                    toggleButton.title = `Mark as ${task.completed ? 'Incomplete' : 'Complete'}`;
-                    toggleButton.className = 'p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200';
-                    toggleButton.textContent = task.completed ? '↩️' : '✅';
-                    toggleButton.addEventListener('click', (event) => TaskManager.toggleComplete(task.id, event));
-
-                    const deleteButton = document.createElement('button');
-                    deleteButton.type = 'button';
-                    deleteButton.title = 'Delete Task';
-                    deleteButton.className = 'p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-red-500';
-                    deleteButton.textContent = '🗑️';
-                    deleteButton.addEventListener('click', (event) => TaskManager.deleteTask(task.id, event));
-
-                    actions.append(startButton, detailsButton, toggleButton, deleteButton);
-
-                    taskWrapper.append(titleContainer, actions);
-                    fragment.appendChild(taskWrapper);
-                });
-
-                container.appendChild(fragment);
+                    
+                    const titleDisplay = this.editingTaskId === task.id
+                        ? `<input type="text" class="task-title-input" data-task-id="${task.id}" value="${task.title}" 
+                                  onblur="TaskManager.saveTaskTitle(${task.id}, this.value)" 
+                                  onkeydown="if(event.key === 'Enter') this.blur(); if(event.key === 'Escape') TaskManager.editTask(null)">`
+                        : `<p class="font-semibold text-gray-800 truncate task-title-text" onclick="event.stopPropagation(); TaskManager.editTask(${task.id})">${task.title}</p>`;
+                    
+                    return `
+                    <div class="task flex items-center justify-between p-3 transition duration-200 ease-in-out bg-white border-l-4 rounded-lg shadow-sm ${task.completed ? 'completed opacity-60' : ''} ${isRunning ? 'running' : ''} ${isOverdue ? 'overdue' : ''} quadrant-${task.quadrant}-border" 
+                         draggable="true" ondragstart="TaskManager.dragStart(event, ${task.id})" ondragend="TaskManager.dragEnd(event)">
+                        <div class="flex-1 min-w-0 task-title">
+                           ${titleDisplay}
+                           <div class="flex items-center gap-3 mt-1 text-xs text-gray-500 task-meta">
+                                ${task.dueDate ? `<span>📅 ${new Date(task.dueDate).toLocaleDateString()}</span>` : ''}
+                                <span>⏱️ ${task.timeBox}m</span>
+                           </div>
+                        </div>
+                        <div class="flex items-center gap-1 ml-2 task-actions">
+                             <button title="Start Timer" onclick="event.stopPropagation(); Timer.startFromTask(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-yellow-500">⏱️</button>
+                             <button title="Details" onclick="event.stopPropagation(); UI.openDetailsModal(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📝</button>
+                             <button title="Add to Google Calendar" onclick='event.stopPropagation(); GoogleService.addToCalendarById(${task.id})' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-blue-500">📅</button>
+                             <button title="Add to Google Tasks" onclick='event.stopPropagation(); GoogleService.addToTasksById(${task.id})' ${!GoogleService.isLoggedIn ? 'disabled' : ''} class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-green-500">✔️</button>
+                            <button title="Mark as ${task.completed ? 'Incomplete' : 'Complete'}" onclick="TaskManager.toggleComplete(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200">${task.completed ? '↩️' : '✅'}</button>
+                            <button title="Delete Task" onclick="TaskManager.deleteTask(${task.id})" class="p-1 text-gray-400 rounded-full task-btn hover:bg-gray-200 hover:text-red-500">🗑️</button>
+                        </div>
+                    </div>
+                `}).join('');
             }
         },
     };
