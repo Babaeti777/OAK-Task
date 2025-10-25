@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <base target="_top">
     <title>Eisenhower Matrix - AI Task Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://apis.google.com/js/api.js" async defer></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
         .quadrant-1-border { border-color: #ef4444 !important; }
@@ -63,7 +62,7 @@
             <header class="mb-8 text-center">
                 <h1 class="text-4xl font-bold tracking-tight text-gray-800 sm:text-5xl">Eisenhower Matrix</h1>
                 <p class="mt-2 text-lg text-gray-600">AI-Powered Task Management.</p>
-                <div id="authSection" class="flex items-center justify-center min-h-[40px] mt-6"></div>
+                <p class="mt-4 text-sm text-gray-500">Manage your tasks, edit details inline, and keep everything in sync with Excel exports.</p>
             </header>
             <div class="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-3">
                 <div class="p-6 bg-white border border-gray-200 rounded-2xl shadow-lg lg:col-span-2">
@@ -105,6 +104,19 @@
                                 <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                             </div>
                         </label>
+                        <div class="p-4 bg-gray-100 rounded-lg">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="font-semibold text-gray-700">OneDrive Sync</p>
+                                    <p id="oneDriveStatus" class="mt-1 text-sm text-gray-600">Not connected.</p>
+                                </div>
+                                <div class="flex flex-col items-stretch gap-2 min-w-[140px]">
+                                    <button id="oneDriveSignInBtn" onclick="OneDriveService.signIn()" class="px-3 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700">Sign in</button>
+                                    <button id="oneDriveSignOutBtn" onclick="OneDriveService.signOut()" class="hidden px-3 py-2 text-sm font-semibold text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200">Sign out</button>
+                                </div>
+                            </div>
+                            <p class="mt-3 text-xs text-gray-500">Changes are saved automatically to OneDrive after you connect.</p>
+                        </div>
                      </div>
                 </div>
             </div>
@@ -145,8 +157,42 @@
                 <h3 id="detailsTitle" class="text-2xl font-bold text-gray-800">Task Details</h3>
                 <button onclick="UI.closeDetailsModal()" class="p-1 text-gray-400 rounded-full hover:bg-gray-200 hover:text-gray-600">&times;</button>
             </div>
-            <div class="mt-4">
-                <div class="mb-4">
+            <div class="mt-4 space-y-6">
+                <div class="space-y-4">
+                    <div>
+                        <label for="detailTitleInput" class="text-sm font-medium text-gray-600">Task Title</label>
+                        <input id="detailTitleInput" type="text" class="w-full px-3 py-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Update the task title">
+                    </div>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                            <label for="detailQuadrantSelect" class="text-sm font-medium text-gray-600">Priority</label>
+                            <select id="detailQuadrantSelect" class="w-full px-3 py-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <option value="1">🔥 Urgent & Important</option>
+                                <option value="2">📅 Important</option>
+                                <option value="3">⚡ Urgent</option>
+                                <option value="4">🗑️ Eliminate</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="detailTimeInput" class="text-sm font-medium text-gray-600">Est. Minutes</label>
+                            <input id="detailTimeInput" type="number" min="5" class="w-full px-3 py-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="detailDueDateInput" class="text-sm font-medium text-gray-600">Due Date</label>
+                            <input id="detailDueDateInput" type="date" class="w-full px-3 py-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-600">
+                        <input id="detailCompletedCheckbox" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                        Mark as completed
+                    </label>
+                    <div class="flex justify-end">
+                        <button onclick="TaskManager.saveDetails()" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md shadow hover:bg-blue-700">
+                            <span>💾 Save Changes</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="pt-4 border-t border-gray-200">
                     <div class="flex items-center justify-between">
                         <h4 class="font-semibold text-gray-700">Sub-tasks</h4>
                         <button id="generateSubtasksBtn" onclick="GeminiService.generateSubtasks()" class="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-purple-500 rounded-md hover:bg-purple-600">
@@ -160,7 +206,7 @@
                         <button onclick="TaskManager.addSubtask()" class="px-3 py-1 font-semibold text-white bg-blue-500 rounded-md hover:bg-blue-600">Add</button>
                     </div>
                 </div>
-                <div>
+                <div class="pt-4 border-t border-gray-200">
                      <div class="flex items-center justify-between">
                         <h4 class="font-semibold text-gray-700">Notes</h4>
                         <button id="generateNotesBtn" onclick="GeminiService.generateNotes()" class="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-purple-500 rounded-md hover:bg-purple-600">
@@ -172,15 +218,24 @@
                 </div>
             </div>
              <div class="flex justify-end mt-6">
-                <button onclick="UI.closeDetailsModal()" class="px-6 py-2 font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">Done</button>
+                <button onclick="UI.closeDetailsModal()" class="px-6 py-2 font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">Close</button>
             </div>
         </div>
     </div>
     
+    <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js" integrity="sha384-p+NQGQ9dI4QmqC6cKUu9Bj83oX6TA8XyqRLrX9Zjrs8ZgM9MJ3ZOjcRQtFoLSI93" crossorigin="anonymous"></script>
+
     <script>
     // --- CONFIGURATION --- //
-    const GOOGLE_CLIENT_ID = "434910578368-6ura496r68hb9onic2osm71c9es9ap8p.apps.googleusercontent.com";
     let GEMINI_API_KEY = "";
+    const ONEDRIVE_CONFIG = {
+        // Set this to your Microsoft Entra application (client) ID before enabling sync.
+        clientId: "",
+        tenantId: "common",
+        filePath: "/Documents/EisenhowerTasks.json"
+    };
+
+    const GEMINI_MODEL = "gemini-1.5-flash-latest";
     
     // --- GEMINI AI SERVICE --- //
     const GeminiService = {
@@ -200,19 +255,21 @@
                 }
             }
         },
-        async call(prompt) {
+        async call(promptText) {
             if (!GEMINI_API_KEY) {
-                const key = prompt("Please enter your Gemini API Key. You can get one from Google AI Studio.");
+                const key = window.prompt("Please enter your Gemini API Key. You can get one from Google AI Studio.");
                 if (key) {
                     GEMINI_API_KEY = key;
-                    localStorage.setItem('geminiApiKey', key);
+                    if (typeof sessionStorage !== 'undefined') {
+                        sessionStorage.setItem('geminiApiKey', key);
+                    }
                 } else {
                     UI.showNotification("Gemini API Key is required for this feature.", "error");
                     return null;
                 }
             }
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+            const payload = { contents: [{ role: "user", parts: [{ text: promptText }] }] };
 
             try {
                 const response = await fetch(apiUrl, {
@@ -266,72 +323,73 @@
         }
     };
 
-    // --- GOOGLE AUTH & API HANDLER --- //
-    const GoogleService = {
-        tokenClient: null, isGapiLoaded: false, isLoggedIn: false, userProfile: null,
+    // --- ONEDRIVE SYNC SERVICE --- //
+    const OneDriveService = {
+        msalInstance: null,
+        account: null,
+        statusElement: null,
+        signInButton: null,
+        signOutButton: null,
+        autoSaveTimer: null,
+        pendingPayload: null,
+        suppressNextSave: false,
+        configured: Boolean(ONEDRIVE_CONFIG.clientId),
         init() {
-            const googleConfigWarning = '<strong>Configuration Required:</strong> Please update the <code>GOOGLE_CLIENT_ID</code> in the script to enable Google Sign-In.';
-            if (GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID.apps.googleusercontent.com') {
-                document.getElementById('configWarning').innerHTML = googleConfigWarning;
-                document.getElementById('configWarning').classList.remove('hidden');
-                document.querySelector('#authSection').innerHTML = `<button class="inline-flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-gray-400 rounded-lg shadow-md cursor-not-allowed" disabled>Setup Required</button>`;
+            this.configured = Boolean(ONEDRIVE_CONFIG.clientId);
+            this.statusElement = document.getElementById('oneDriveStatus');
+            this.signInButton = document.getElementById('oneDriveSignInBtn');
+            this.signOutButton = document.getElementById('oneDriveSignOutBtn');
+
+            if (!this.statusElement) {
                 return;
             }
 
-            google.accounts.id.initialize({
-                client_id: GOOGLE_CLIENT_ID,
-                callback: this.handleCredentialResponse.bind(this),
-                auto_select: true
-            });
-            google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    this.renderSignInButton();
-                }
-            });
-            gapi.load('client', this.initGapiClient.bind(this));
-        },
-        async initGapiClient() {
-            await gapi.client.init({ discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest", "https://www.googleapis.com/discovery/v1/apis/tasks/v1/rest"] });
-            this.isGapiLoaded = true;
-            if (this.isLoggedIn) {
-                this.syncWithGoogleTasks();
+            if (!this.configured) {
+                this.setStatus('OneDrive sync is not configured. Add your Microsoft app Client ID in ONEDRIVE_CONFIG.', 'error');
+                this.updateButtons(false, true);
+                return;
             }
-        },
-        handleCredentialResponse(response) {
-            this.userProfile = this.decodeJwt(response.credential);
-            this.isLoggedIn = true;
-            this.tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: GOOGLE_CLIENT_ID,
-                scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks',
-                callback: '',
+
+            if (typeof msal === 'undefined') {
+                this.setStatus('Microsoft authentication library could not be loaded.', 'error');
+                this.updateButtons(false);
+                return;
+            }
+
+            this.msalInstance = new msal.PublicClientApplication({
+                auth: {
+                    clientId: ONEDRIVE_CONFIG.clientId,
+                    authority: `https://login.microsoftonline.com/${ONEDRIVE_CONFIG.tenantId}`,
+                    redirectUri: window.location.origin + window.location.pathname
+                },
+                cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
             });
-            this.updateUIAfterLogin();
-            TaskManager.render();
-            this.syncWithGoogleTasks();
-            setInterval(() => this.syncWithGoogleTasks(), 300000);
-        },
-        _makeApiCall(callback) {
-            if (!this.isLoggedIn || !this.tokenClient) { UI.showNotification("Please sign in to use Google features.", "error"); return; }
-            if (!this.isGapiLoaded) { UI.showNotification("Google APIs are still loading. Please try again.", "error"); return; }
-            this.tokenClient.callback = (tokenResponse) => {
-                if (tokenResponse && tokenResponse.access_token) {
-                    gapi.client.setToken(tokenResponse);
-                    callback();
-                } else {
-                    console.error("Authorization failed.", tokenResponse);
-                    UI.showNotification("Google authorization failed. Please grant permissions.", "error");
-                }
-            };
-            this.tokenClient.requestAccessToken({ prompt: 'consent' });
-        },
-        async syncWithGoogleTasks() {
-             if (!this.isLoggedIn) return;
-            this._makeApiCall(async () => {
-                try {
-                    const response = await gapi.client.tasks.tasks.list({ tasklist: '@default', showCompleted: true, showHidden: false });
-                    TaskManager.syncTasks(response.result.items || []);
-                } catch (err) { console.error("Error syncing with Google Tasks:", err); }
-            });
+
+            this.updateButtons(false);
+            this.setStatus('Sign in to sync with OneDrive.', 'default');
+
+            this.msalInstance.handleRedirectPromise()
+                .then((response) => {
+                    if (response && response.account) {
+                        this.account = response.account;
+                    } else {
+                        const accounts = this.msalInstance.getAllAccounts();
+                        if (accounts.length > 0) {
+                            this.account = accounts[0];
+                        }
+                    }
+
+                    if (this.account) {
+                        this.msalInstance.setActiveAccount(this.account);
+                        this.updateButtons(true);
+                        this.setStatus(`Connected as ${this.account.username}`, 'success');
+                        this.loadTasks();
+                    }
+                })
+                .catch((error) => {
+                    console.error('OneDrive initialization error:', error);
+                    this.setStatus('Failed to initialize OneDrive sync.', 'error');
+                });
         },
         addToCalendarById(taskId) {
              const task = TaskManager.tasks.find(t => t.id === taskId);
@@ -363,51 +421,150 @@
                 } catch (err) { console.error("Error adding to Calendar:", err); UI.showNotification("Could not add to Google Calendar.", "error");}
             });
         },
-        addToTasks(task) {
-             this._makeApiCall(async () => {
-                try {
-                    const res = await gapi.client.tasks.tasks.insert({
-                        tasklist: '@default',
-                        resource: { title: task.title, notes: `Quadrant: ${task.quadrant}\n\nNotes:\n${task.notes}`, due: task.dueDate }
-                    });
-                    task.googleTaskId = res.result.id;
-                    TaskManager.saveAndRender();
-                    UI.showNotification("Task added to Google Tasks!", "success");
-                } catch (err) { console.error("Error adding to Tasks:", err); UI.showNotification("Could not add to Google Tasks.", "error");}
-            });
+        isReady() {
+            return this.configured && this.msalInstance && this.account;
         },
-        updateTask(task) {
-             if (!task.googleTaskId) return;
-            this._makeApiCall(async () => {
-                try {
-                    await gapi.client.tasks.tasks.patch({
-                        tasklist: '@default',
-                        task: task.googleTaskId,
-                        resource: { id: task.googleTaskId, status: task.completed ? 'completed' : 'needsAction' }
-                    });
-                } catch (err) { console.error("Error updating Google Task:", err); }
-            });
+        getContentUrl() {
+            const path = ONEDRIVE_CONFIG.filePath.startsWith('/') ? ONEDRIVE_CONFIG.filePath : `/${ONEDRIVE_CONFIG.filePath}`;
+            return `https://graph.microsoft.com/v1.0/me/drive/root:${encodeURI(path)}:/content`;
         },
-        signIn() { if (google.accounts.id) { google.accounts.id.prompt(); } },
-        signOut() {
-            if (gapi.client.getToken()) { google.accounts.oauth2.revoke(gapi.client.getToken().access_token, () => {}); gapi.client.setToken(null); }
-            google.accounts.id.disableAutoSelect();
-            this.isLoggedIn = false; this.userProfile = null; this.tokenClient = null;
-            this.renderSignInButton(); TaskManager.render(); UI.showNotification("You have been signed out.");
+        async signIn() {
+            if (!this.msalInstance) {
+                this.init();
+                if (!this.msalInstance) return;
+            }
+            try {
+                const response = await this.msalInstance.loginPopup({ scopes: ['Files.ReadWrite.All'] });
+                if (response && response.account) {
+                    this.account = response.account;
+                    this.msalInstance.setActiveAccount(this.account);
+                    this.updateButtons(true);
+                    this.setStatus(`Connected as ${this.account.username}`, 'success');
+                    await this.loadTasks();
+                }
+            } catch (error) {
+                if (error && (error.errorCode === 'user_cancelled' || error.errorCode === 'user_cancelled_login')) {
+                    this.setStatus('Sign-in was cancelled.', 'error');
+                } else {
+                    console.error('OneDrive sign-in error:', error);
+                    this.setStatus('Failed to sign in to OneDrive.', 'error');
+                }
+            }
         },
-        renderSignInButton() {
-            document.getElementById('authSection').innerHTML = `<button class="inline-flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700" onclick="GoogleService.signIn()"><svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.19,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.19,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.19,22C17.6,22 21.54,18.33 21.54,12.25C21.54,11.66 21.48,11.38 21.35,11.1Z"></path></svg> Sign in with Google</button>`;
+        async signOut() {
+            if (!this.msalInstance || !this.account) return;
+            try {
+                await this.msalInstance.logoutPopup({ account: this.account });
+            } catch (error) {
+                console.error('OneDrive sign-out error:', error);
+            }
+            this.account = null;
+            if (this.autoSaveTimer) {
+                clearTimeout(this.autoSaveTimer);
+                this.autoSaveTimer = null;
+            }
+            this.pendingPayload = null;
+            this.updateButtons(false);
+            this.setStatus('Sign in to sync with OneDrive.', 'default');
         },
-        updateUIAfterLogin() {
-             document.getElementById('authSection').innerHTML = `<div class="flex items-center gap-3"><img src="${this.userProfile.picture}" alt="User" class="w-10 h-10 border-2 border-white rounded-full shadow-md"><span class="font-semibold text-gray-800">${this.userProfile.name}</span><button class="px-3 py-1 text-sm font-medium text-gray-700 bg-white rounded-md hover:bg-gray-200" onclick="GoogleService.signOut()">Sign Out</button></div>`;
+        async acquireToken() {
+            if (!this.isReady()) {
+                throw new Error('Not authenticated with OneDrive.');
+            }
+            try {
+                return await this.msalInstance.acquireTokenSilent({
+                    scopes: ['Files.ReadWrite.All'],
+                    account: this.account
+                });
+            } catch (error) {
+                if (typeof msal !== 'undefined' && error instanceof msal.InteractionRequiredAuthError) {
+                    return this.msalInstance.acquireTokenPopup({ scopes: ['Files.ReadWrite.All'] });
+                }
+                throw error;
+            }
         },
-        decodeJwt(token) { try { return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); } catch (e) { console.error('Error decoding JWT', e); return null; } }
+        async loadTasks() {
+            if (!this.isReady()) return;
+            try {
+                this.setStatus('Syncing with OneDrive…', 'default');
+                const tokenResponse = await this.acquireToken();
+                const response = await fetch(this.getContentUrl(), {
+                    headers: { Authorization: `Bearer ${tokenResponse.accessToken}` }
+                });
+                if (response.status === 404) {
+                    this.setStatus('A new OneDrive task file will be created on your next change.', 'default');
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`Unexpected status ${response.status}`);
+                }
+                const text = await response.text();
+                let data = [];
+                if (text) {
+                    try {
+                        data = JSON.parse(text);
+                    } catch (parseError) {
+                        throw new Error('Unable to parse OneDrive task data.');
+                    }
+                }
+                if (Array.isArray(data)) {
+                    this.suppressNextSave = true;
+                    TaskManager.replaceTasks(data);
+                    this.setStatus('Tasks synced from OneDrive.', 'success');
+                } else {
+                    throw new Error('Unexpected data format.');
+                }
+            } catch (error) {
+                console.error('OneDrive load error:', error);
+                this.setStatus('Failed to load tasks from OneDrive.', 'error');
+            }
+        },
+        queueSave(tasks) {
+            if (!this.isReady()) return;
+            if (this.suppressNextSave) {
+                this.suppressNextSave = false;
+                return;
+            }
+            this.pendingPayload = JSON.stringify(tasks);
+            if (this.autoSaveTimer) {
+                clearTimeout(this.autoSaveTimer);
+            }
+            this.autoSaveTimer = setTimeout(() => {
+                const payload = this.pendingPayload;
+                this.pendingPayload = null;
+                this.saveTasks(payload);
+            }, 1500);
+            this.setStatus('Pending changes…', 'default');
+        },
+        async saveTasks(payload) {
+            if (!this.isReady() || !payload) return;
+            try {
+                this.setStatus('Saving changes to OneDrive…', 'default');
+                const tokenResponse = await this.acquireToken();
+                const response = await fetch(this.getContentUrl(), {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: `Bearer ${tokenResponse.accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: payload
+                });
+                if (!response.ok) {
+                    throw new Error(`Unexpected status ${response.status}`);
+                }
+                this.setStatus('All changes saved to OneDrive.', 'success');
+            } catch (error) {
+                console.error('OneDrive save error:', error);
+                this.setStatus('Failed to save changes to OneDrive.', 'error');
+            }
+        }
     };
     
     // --- TIMER --- //
     const Timer = {
         currentTask: null, duration: 0, remaining: 0, interval: null, isRunning: false,
-        startFromTask(taskId) {
+        startFromTask(taskId, evt = null) {
+            if (evt) evt.stopPropagation();
             const task = TaskManager.tasks.find(t => t.id === taskId);
             if (!task) return;
             
@@ -432,8 +589,8 @@
             this.isRunning = true;
             document.getElementById('timer-fullscreen-pause').classList.remove('hidden');
             document.getElementById('timer-fullscreen-start').classList.add('hidden');
+            this.updateFullscreenDisplay();
             this.interval = setInterval(this.tick.bind(this), 1000);
-            this.tick();
             TaskManager.render();
         },
         tick() {
@@ -486,29 +643,72 @@
     // --- UI MANAGER --- //
     const UI = {
         currentDetailTaskId: null,
-        openDetailsModal(taskId) {
-            event.stopPropagation();
+        openDetailsModal(taskId, evt = null) {
+            if (evt) evt.stopPropagation();
             this.currentDetailTaskId = taskId;
             const task = TaskManager.tasks.find(t => t.id === taskId);
             if (!task) return;
 
             document.getElementById('detailsTitle').textContent = task.title;
-            document.getElementById('taskNotes').value = task.notes || '';
+
+            const titleInput = document.getElementById('detailTitleInput');
+            const quadrantSelect = document.getElementById('detailQuadrantSelect');
+            const timeInput = document.getElementById('detailTimeInput');
+            const dueDateInput = document.getElementById('detailDueDateInput');
+            const completedCheckbox = document.getElementById('detailCompletedCheckbox');
+            const notesArea = document.getElementById('taskNotes');
+
+            if (titleInput) { titleInput.value = task.title; }
+            if (quadrantSelect) { quadrantSelect.value = task.quadrant; }
+            if (timeInput) { timeInput.value = task.timeBox; }
+            if (dueDateInput) {
+                dueDateInput.value = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
+            }
+            if (completedCheckbox) { completedCheckbox.checked = Boolean(task.completed); }
+            if (notesArea) { notesArea.value = task.notes || ''; }
             
             const subtasksContainer = document.getElementById('subtasksContainer');
-            subtasksContainer.innerHTML = (task.subtasks || []).map(st => `
-                <div class="flex items-center gap-2 p-2 bg-gray-100 rounded-md">
-                    <input type="checkbox" ${st.completed ? 'checked' : ''} onchange="TaskManager.toggleSubtask(${st.id})" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-                    <span class="flex-grow ${st.completed ? 'line-through text-gray-500' : 'text-gray-800'}">${st.text}</span>
-                    <button onclick="TaskManager.deleteSubtask(${st.id})" class="text-xs text-red-500 hover:text-red-700">Delete</button>
-                </div>
-            `).join('') || '<p class="text-sm text-center text-gray-500">No sub-tasks yet.</p>';
+            subtasksContainer.textContent = '';
+            const subtasks = task.subtasks || [];
+            if (subtasks.length === 0) {
+                const emptyMessage = document.createElement('p');
+                emptyMessage.className = 'text-sm text-center text-gray-500';
+                emptyMessage.textContent = 'No sub-tasks yet.';
+                subtasksContainer.appendChild(emptyMessage);
+            } else {
+                const fragment = document.createDocumentFragment();
+                subtasks.forEach((st) => {
+                    const subtaskRow = document.createElement('div');
+                    subtaskRow.className = 'flex items-center gap-2 p-2 bg-gray-100 rounded-md';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = Boolean(st.completed);
+                    checkbox.className = 'w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500';
+                    checkbox.addEventListener('change', () => TaskManager.toggleSubtask(st.id));
+
+                    const textSpan = document.createElement('span');
+                    textSpan.className = `flex-grow ${st.completed ? 'line-through text-gray-500' : 'text-gray-800'}`;
+                    textSpan.textContent = st.text;
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'text-xs text-red-500 hover:text-red-700';
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.addEventListener('click', () => TaskManager.deleteSubtask(st.id));
+
+                    subtaskRow.append(checkbox, textSpan, deleteButton);
+                    fragment.appendChild(subtaskRow);
+                });
+                subtasksContainer.appendChild(fragment);
+            }
             
             const modal = document.getElementById('detailsModal');
             modal.classList.remove('opacity-0', 'pointer-events-none');
             modal.querySelector('.modal-content').classList.remove('scale-95');
 
-            document.getElementById('taskNotes').onblur = () => TaskManager.updateNotes(document.getElementById('taskNotes').value);
+            if (notesArea) {
+                notesArea.onblur = () => TaskManager.updateNotes(notesArea.value);
+            }
         },
         closeDetailsModal() {
             this.currentDetailTaskId = null;
@@ -519,9 +719,9 @@
         },
         showNotification(message, type = 'success') {
              const warningDiv = document.getElementById('configWarning');
-             warningDiv.innerHTML = message;
+             warningDiv.textContent = message;
              warningDiv.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
-             warningDiv.classList.add(type === 'success' ? 'bg-green-100' : 'bg-green-800', type === 'success' ? 'text-green-800' : 'text-red-800');
+             warningDiv.classList.add(type === 'success' ? 'bg-green-100' : 'bg-red-100', type === 'success' ? 'text-green-800' : 'text-red-800');
              setTimeout(() => {
                 warningDiv.classList.add('hidden');
              }, 5000)
@@ -530,13 +730,18 @@
     
     // --- TASK MANAGER --- //
     const TaskManager = {
-        tasks: JSON.parse(localStorage.getItem('tasks')) || [],
-        idCounter: parseInt(localStorage.getItem('idCounter')) || 1,
+        tasks: [],
+        idCounter: 1,
         editingTaskId: null,
         init() {
-            GEMINI_API_KEY = localStorage.getItem('geminiApiKey') || '';
-            GoogleService.init();
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('geminiApiKey')) {
+                localStorage.removeItem('geminiApiKey');
+            }
+            if (typeof sessionStorage !== 'undefined') {
+                GEMINI_API_KEY = sessionStorage.getItem('geminiApiKey') || '';
+            }
             this.render();
+            OneDriveService.init();
         },
         addTask(event) {
             event.preventDefault();
@@ -553,10 +758,11 @@
             };
             this.tasks.push(task); this.saveAndRender(); event.target.reset();
         },
-        editTask(taskId) {
-            event.stopPropagation();
+        editTask(taskId, evt = null) {
+            if (evt) evt.stopPropagation();
             this.editingTaskId = taskId;
             this.render();
+            if (taskId === null) { return; }
             const input = document.querySelector(`.task-title-input[data-task-id='${taskId}']`);
             if (input) {
                 input.focus();
@@ -571,14 +777,14 @@
             this.editingTaskId = null;
             this.saveAndRender();
         },
-        deleteTask(taskId) {
-            event.stopPropagation();
+        deleteTask(taskId, evt = null) {
+            if (evt) evt.stopPropagation();
             if (confirm('Are you sure you want to delete this task?')) { this.tasks = this.tasks.filter(t => t.id !== taskId); this.saveAndRender(); }
         },
-        toggleComplete(taskId) {
-            event.stopPropagation();
+        toggleComplete(taskId, evt = null) {
+            if (evt) evt.stopPropagation();
             const task = this.tasks.find(t => t.id == taskId);
-            if(task) { task.completed = !task.completed; GoogleService.updateTask(task); this.saveAndRender(); }
+            if(task) { task.completed = !task.completed; this.saveAndRender(); }
         },
         addSubtask(text, fromAI = false) {
             const taskId = UI.currentDetailTaskId;
@@ -596,7 +802,7 @@
                 document.getElementById('newSubtaskInput').value = '';
             }
             this.saveAndRender();
-            UI.openDetailsModal(taskId);
+            UI.openDetailsModal(taskId, null);
         },
         toggleSubtask(subtaskId) {
             const taskId = UI.currentDetailTaskId;
@@ -605,7 +811,7 @@
             const subtask = task.subtasks.find(st => st.id === subtaskId);
             if(subtask) subtask.completed = !subtask.completed;
             this.saveAndRender();
-            UI.openDetailsModal(taskId);
+            UI.openDetailsModal(taskId, null);
         },
         deleteSubtask(subtaskId) {
             const taskId = UI.currentDetailTaskId;
@@ -613,23 +819,60 @@
             if (!task) return;
             task.subtasks = task.subtasks.filter(st => st.id !== subtaskId);
             this.saveAndRender();
-            UI.openDetailsModal(taskId);
+            UI.openDetailsModal(taskId, null);
         },
         updateNotes(notes) {
             const taskId = UI.currentDetailTaskId;
             const task = this.tasks.find(t => t.id === taskId);
             if (task) { task.notes = notes; this.saveAndRender(); }
         },
-        syncTasks(googleTasks) {
-            let updated = false;
-            googleTasks.forEach(gTask => {
-                const localTask = this.tasks.find(t => t.googleTaskId === gTask.id);
-                if (localTask) {
-                    const isGoogleCompleted = gTask.status === 'completed';
-                    if (localTask.completed !== isGoogleCompleted) { localTask.completed = isGoogleCompleted; updated = true; }
+        saveDetails() {
+            const taskId = UI.currentDetailTaskId;
+            const task = this.tasks.find(t => t.id === taskId);
+            if (!task) { return; }
+
+            const titleInput = document.getElementById('detailTitleInput');
+            const quadrantSelect = document.getElementById('detailQuadrantSelect');
+            const timeInput = document.getElementById('detailTimeInput');
+            const dueDateInput = document.getElementById('detailDueDateInput');
+            const completedCheckbox = document.getElementById('detailCompletedCheckbox');
+
+            if (titleInput && titleInput.value.trim()) {
+                task.title = titleInput.value.trim();
+            }
+
+            if (quadrantSelect) {
+                const quadrantValue = parseInt(quadrantSelect.value, 10);
+                if (quadrantValue >= 1 && quadrantValue <= 4) {
+                    task.quadrant = quadrantValue;
                 }
-            });
-            if (updated) { this.saveAndRender(); }
+            }
+
+            if (timeInput) {
+                const minutes = parseInt(timeInput.value, 10);
+                if (!isNaN(minutes) && minutes > 0) {
+                    task.timeBox = minutes;
+                }
+            }
+
+            if (dueDateInput) {
+                const dueDateValue = dueDateInput.value;
+                task.dueDate = dueDateValue ? new Date(dueDateValue + 'T00:00:00').toISOString() : null;
+            }
+
+            if (completedCheckbox) {
+                task.completed = completedCheckbox.checked;
+            }
+
+            this.saveAndRender();
+            UI.openDetailsModal(taskId, null);
+            UI.showNotification('Task details updated.', 'success');
+        },
+        replaceTasks(newTasks) {
+            this.tasks = newTasks;
+            const maxId = this.tasks.reduce((max, task) => Math.max(max, task.id || 0), 0);
+            this.idCounter = maxId + 1;
+            this.saveAndRender();
         },
         moveTask(taskId, newQuadrant) { const task = this.tasks.find(t => t.id == taskId); if (task) { task.quadrant = newQuadrant; this.saveAndRender(); } },
         dragStart(event, taskId) { 
@@ -650,7 +893,13 @@
             const newQuadrant = parseInt(event.currentTarget.dataset.quadrant);
             this.moveTask(taskId, newQuadrant);
         },
-        saveAndRender() { this.checkOverdueTasks(); localStorage.setItem('tasks', JSON.stringify(this.tasks)); localStorage.setItem('idCounter', this.idCounter); this.render(); },
+        saveAndRender() {
+            this.checkOverdueTasks();
+            localStorage.setItem('tasks', JSON.stringify(this.tasks));
+            localStorage.setItem('idCounter', this.idCounter);
+            this.render();
+            OneDriveService.queueSave(this.tasks);
+        },
         checkOverdueTasks() {
             const now = new Date();
             this.tasks.forEach(task => { if (task.dueDate && !task.completed) { if (new Date(task.dueDate) < now) { task.quadrant = 1; } } });
@@ -662,8 +911,19 @@
                 let quadrantTasks = this.tasks.filter(t => t.quadrant == i);
                 if (hideCompleted) { quadrantTasks = quadrantTasks.filter(t => !t.completed); }
                 document.getElementById(`count-${i}`).textContent = quadrantTasks.length;
-                if (quadrantTasks.length === 0) { container.innerHTML = `<div class="p-4 text-center text-gray-500">No tasks here.</div>`; continue; }
-                container.innerHTML = quadrantTasks.map(task => {
+                if (quadrantTasks.length === 0) {
+                    container.textContent = '';
+                    const empty = document.createElement('div');
+                    empty.className = 'p-4 text-center text-gray-500';
+                    empty.textContent = 'No tasks here.';
+                    container.appendChild(empty);
+                    continue;
+                }
+
+                container.textContent = '';
+                const fragment = document.createDocumentFragment();
+
+                quadrantTasks.forEach((task) => {
                     const isRunning = Timer.currentTask && Timer.currentTask.id === task.id;
                     const isOverdue = task.dueDate && !task.completed && new Date(task.dueDate) < new Date();
                     
@@ -697,6 +957,20 @@
         },
     };
     TaskManager.init();
+
+    (function () {
+        const warning = document.getElementById('configWarning');
+        if (typeof google !== 'undefined' && google.script && google.script.host) {
+            try {
+                google.script.host.setHeight(640);
+            } catch (err) {
+                console.warn('Unable to set sidebar height', err);
+            }
+        } else if (warning) {
+            warning.textContent = 'To use this dashboard inside Google Sheets, import both "Code.gs" and "index.html" into an Apps Script project and open it from the custom "Eisenhower Matrix" menu.';
+            warning.classList.remove('hidden');
+        }
+    })();
     </script>
 </body>
 </html>
