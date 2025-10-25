@@ -181,7 +181,93 @@
     // --- CONFIGURATION --- //
     const GOOGLE_CLIENT_ID = "434910578368-6ura496r68hb9onic2osm71c9es9ap8p.apps.googleusercontent.com";
     let GEMINI_API_KEY = "";
-    
+
+    const safeLocalStorage = (() => {
+        try {
+            return window.localStorage;
+        } catch (error) {
+            console.warn("Local storage is not accessible:", error);
+            return null;
+        }
+    })();
+
+    const StorageService = (() => {
+        const isAppsScript = typeof google !== 'undefined' && google.script && google.script.run;
+
+        const normalizeTasksResponse = (data) => {
+            const tasks = data && Array.isArray(data.tasks) ? data.tasks : [];
+            const rawCounter = data && Object.prototype.hasOwnProperty.call(data, 'idCounter') ? data.idCounter : null;
+            const numericCounter = Number(rawCounter);
+            const idCounter = Number.isFinite(numericCounter) && numericCounter > 0 ? Math.floor(numericCounter) : 1;
+            return { tasks, idCounter };
+        };
+
+        return {
+            isAppsScript,
+            loadTasks() {
+                if (!isAppsScript) {
+                    let tasks = [];
+                    if (safeLocalStorage) {
+                        try {
+                            tasks = JSON.parse(safeLocalStorage.getItem('tasks')) || [];
+                        } catch (error) {
+                            console.warn("Failed to parse tasks from local storage:", error);
+                            tasks = [];
+                        }
+                    }
+                    const idCounter = safeLocalStorage ? parseInt(safeLocalStorage.getItem('idCounter')) || 1 : 1;
+                    return Promise.resolve({ tasks, idCounter });
+                }
+                return new Promise((resolve, reject) => {
+                    google.script.run
+                        .withSuccessHandler(data => resolve(normalizeTasksResponse(data)))
+                        .withFailureHandler(reject)
+                        .getTasks();
+                });
+            },
+            saveTasks(tasks, idCounter) {
+                if (!isAppsScript) {
+                    if (safeLocalStorage) {
+                        safeLocalStorage.setItem('tasks', JSON.stringify(tasks));
+                        safeLocalStorage.setItem('idCounter', idCounter);
+                    }
+                    return Promise.resolve();
+                }
+                return new Promise((resolve, reject) => {
+                    google.script.run
+                        .withSuccessHandler(resolve)
+                        .withFailureHandler(reject)
+                        .saveTasks({ tasks, idCounter });
+                });
+            },
+            getGeminiKey() {
+                if (!isAppsScript) {
+                    return Promise.resolve(safeLocalStorage ? safeLocalStorage.getItem('geminiApiKey') || '' : '');
+                }
+                return new Promise((resolve, reject) => {
+                    google.script.run
+                        .withSuccessHandler(key => resolve(key || ''))
+                        .withFailureHandler(reject)
+                        .getGeminiKey();
+                });
+            },
+            setGeminiKey(key) {
+                if (!isAppsScript) {
+                    if (safeLocalStorage) {
+                        safeLocalStorage.setItem('geminiApiKey', key);
+                    }
+                    return Promise.resolve();
+                }
+                return new Promise((resolve, reject) => {
+                    google.script.run
+                        .withSuccessHandler(resolve)
+                        .withFailureHandler(reject)
+                        .setGeminiKey(key || '');
+                });
+            }
+        };
+    })();
+
     // --- GEMINI AI SERVICE --- //
     const GeminiService = {
         setLoadingState(buttonId, isLoading) {
@@ -200,19 +286,26 @@
                 }
             }
         },
-        async call(prompt) {
+        async call(promptText) {
             if (!GEMINI_API_KEY) {
-                const key = prompt("Please enter your Gemini API Key. You can get one from Google AI Studio.");
+                const key = window.prompt("Please enter your Gemini API Key. You can get one from Google AI Studio.");
                 if (key) {
                     GEMINI_API_KEY = key;
-                    localStorage.setItem('geminiApiKey', key);
+                    try {
+                        await StorageService.setGeminiKey(key);
+                    } catch (error) {
+                        console.error("Failed to persist Gemini API key via storage service:", error);
+                        if (safeLocalStorage) {
+                            safeLocalStorage.setItem('geminiApiKey', key);
+                        }
+                    }
                 } else {
                     UI.showNotification("Gemini API Key is required for this feature.", "error");
                     return null;
                 }
             }
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            const payload = { contents: [{ role: "user", parts: [{ text: promptText }] }] };
 
             try {
                 const response = await fetch(apiUrl, {
@@ -528,11 +621,42 @@
     
     // --- TASK MANAGER --- //
     const TaskManager = {
-        tasks: JSON.parse(localStorage.getItem('tasks')) || [],
-        idCounter: parseInt(localStorage.getItem('idCounter')) || 1,
+        tasks: [],
+        idCounter: 1,
         editingTaskId: null,
-        init() {
-            GEMINI_API_KEY = localStorage.getItem('geminiApiKey') || '';
+        async init() {
+            try {
+                const [storageData, geminiKey] = await Promise.all([
+                    StorageService.loadTasks(),
+                    StorageService.getGeminiKey()
+                ]);
+                this.tasks = storageData.tasks || [];
+                this.idCounter = storageData.idCounter || 1;
+                GEMINI_API_KEY = geminiKey || '';
+                if (StorageService.isAppsScript) {
+                    UI.showNotification("Tasks are now synced with this spreadsheet.", "success");
+                }
+            } catch (error) {
+                console.error("Failed to initialize storage service:", error);
+                let storedTasks = [];
+                if (safeLocalStorage) {
+                    try {
+                        storedTasks = JSON.parse(safeLocalStorage.getItem('tasks')) || [];
+                    } catch (parseError) {
+                        console.warn("Could not parse tasks from local storage:", parseError);
+                        storedTasks = [];
+                    }
+                    this.idCounter = parseInt(safeLocalStorage.getItem('idCounter')) || 1;
+                    GEMINI_API_KEY = safeLocalStorage.getItem('geminiApiKey') || '';
+                } else {
+                    this.idCounter = 1;
+                    GEMINI_API_KEY = '';
+                }
+                this.tasks = storedTasks;
+                if (StorageService.isAppsScript) {
+                    UI.showNotification("Could not load tasks from the spreadsheet. Using browser storage instead.", "error");
+                }
+            }
             GoogleService.init();
             this.render();
         },
@@ -656,7 +780,19 @@
             const newQuadrant = parseInt(event.currentTarget.dataset.quadrant);
             this.moveTask(taskId, newQuadrant);
         },
-        saveAndRender() { this.checkOverdueTasks(); localStorage.setItem('tasks', JSON.stringify(this.tasks)); localStorage.setItem('idCounter', this.idCounter); this.render(); },
+        async saveAndRender() {
+            this.checkOverdueTasks();
+            this.render();
+            try {
+                await StorageService.saveTasks(this.tasks, this.idCounter);
+            } catch (error) {
+                console.error("Failed to persist tasks via storage service:", error);
+                if (safeLocalStorage) {
+                    safeLocalStorage.setItem('tasks', JSON.stringify(this.tasks));
+                    safeLocalStorage.setItem('idCounter', this.idCounter);
+                }
+            }
+        },
         checkOverdueTasks() {
             const now = new Date();
             this.tasks.forEach(task => { if (task.dueDate && !task.completed) { if (new Date(task.dueDate) < now) { task.quadrant = 1; } } });
